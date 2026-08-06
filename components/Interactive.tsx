@@ -67,12 +67,64 @@ const formCopy: Record<FormKind, [string, string]> = {
 
 export function FormCard({ kind, campus, onClose }: { kind: FormKind; campus?: Campus; onClose?: () => void }) {
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [timeSensitive, setTimeSensitive] = useState(false);
   const [children, setChildren] = useState(1);
   const [heading, description] = formCopy[kind];
-  const submit = (event: FormEvent) => {
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSent(true);
+    setError(null);
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+
+    if (formData.get("website")) {
+      // Honeypot tripped — pretend success without hitting the network.
+      setSent(true);
+      return;
+    }
+
+    const payload: Record<string, unknown> = { kind, campus: campus?.slug };
+
+    if (kind === "children") {
+      const childList = Array.from({ length: children }, (_, index) => ({
+        name: formData.get(`child-${index}-name`) ?? "",
+        ageGroup: formData.get(`child-${index}-age`) ?? "",
+        notes: formData.get(`child-${index}-notes`) ?? "",
+      }));
+      payload.children = childList;
+      payload.name = formData.get("name") ?? "";
+      payload.email = formData.get("email") ?? "";
+    } else {
+      for (const [key, value] of formData.entries()) {
+        if (key === "website" || key === "campus") continue;
+        payload[key] = value;
+      }
+      payload.campusEmails = formData.get("campusEmails") === "on";
+      payload.timeSensitive = timeSensitive;
+      if (formData.has("consent")) payload.consent = true;
+    }
+
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({ ok: false, error: "Unexpected response from server." }));
+      if (!response.ok || !result.ok) {
+        setError(result.error ?? "Something went wrong. Please try again.");
+        return;
+      }
+      setSent(true);
+    } catch {
+      setError("We couldn't reach the server. Check your connection and try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const resolvedHeading = kind === "children" && campus ? `Pre-register for Zoe Arrows — ${campus.shortName}` : heading;
@@ -98,7 +150,9 @@ export function FormCard({ kind, campus, onClose }: { kind: FormKind; campus?: C
     <span className="eyebrow">{campus?.name ?? "Zoe Household"}</span>
     <h2>{resolvedHeading}</h2>
     <p>{description}</p>
+    <input type="text" name="website" tabIndex={-1} autoComplete="off" className="form-honeypot" aria-hidden="true" />
     <div className="form-grid">
+      {error && <p className="form-error full" role="alert">{error}</p>}
       {!["online", "reminder"].includes(kind) && <label className="field"><span>Name</span><input name="name" autoComplete="name" required /></label>}
       <label className="field"><span>Email</span><input name="email" type="email" autoComplete="email" required /></label>
 
@@ -129,9 +183,9 @@ export function FormCard({ kind, campus, onClose }: { kind: FormKind; campus?: C
         <label className="field"><span>Topic</span><select name="topic" required defaultValue=""><option value="" disabled>Select a topic</option><option>Visiting a Campus</option><option>Membership</option><option>Giving</option><option>Events</option><option>Scholarship & Resources</option><option>Media & Partnerships</option><option>Other</option></select></label>
         <label className="field"><span>Campus or region (optional)</span><input name="region" /></label>
         <label className="field full"><span>Message</span><textarea name="message" required /></label>
-        <label className="checkbox full"><input type="checkbox" required /> I agree that Zoe Household may use these details to respond to my inquiry.</label>
+        <label className="checkbox full"><input type="checkbox" name="consent" required /> I agree that Zoe Household may use these details to respond to my inquiry.</label>
       </>}
-      <button className="button button-dark full" type="submit">Submit</button>
+      <button className="button button-dark full" type="submit" disabled={submitting}>{submitting ? "Sending…" : "Submit"}</button>
     </div>
   </form>;
 }
