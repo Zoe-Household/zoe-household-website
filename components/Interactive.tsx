@@ -57,7 +57,7 @@ export function Accordion({ items, className = "" }: { items: readonly (readonly
 type FormKind = "visit" | "children" | "reminder" | "online" | "prayer" | "inquiry";
 
 const formCopy: Record<FormKind, [string, string]> = {
-  visit: ["Let us know you’re coming", "We would be glad to help before Sunday."],
+  visit: ["We're looking forward to having you.", "Let us know you're coming, and tell us if there's anything we can help you with before Sunday"],
   children: ["Pre-register for Zoe Arrows", "A simpler check-in starts here."],
   reminder: ["Get service reminders", "Stay connected to your local household."],
   online: ["Request Zoe Online access", "Share your email and our team will contact you with access details."],
@@ -139,13 +139,13 @@ export function FormCard({ kind, campus, onClose }: { kind: FormKind; campus?: C
           : "Thank you. Your message has been received.";
 
   if (sent) {
-    return <div className="form-card success-card" role="status">
+    return <div className={`form-card success-card${kind === "visit" ? " is-visit" : ""}`} role="status">
       {onClose && <button className="form-close" type="button" onClick={onClose} aria-label="Close form">×</button>}
       <span className="eyebrow">Received</span><h2>Thank you.</h2><p>{success}</p>
     </div>;
   }
 
-  return <form className="form-card" onSubmit={submit}>
+  return <form className={`form-card${kind === "visit" ? " is-visit" : ""}`} onSubmit={submit}>
     {onClose && <button className="form-close" type="button" onClick={onClose} aria-label="Close form">×</button>}
     <span className="eyebrow">{campus?.name ?? "Zoe Household"}</span>
     <h2>{resolvedHeading}</h2>
@@ -153,12 +153,12 @@ export function FormCard({ kind, campus, onClose }: { kind: FormKind; campus?: C
     <input type="text" name="website" tabIndex={-1} autoComplete="off" className="form-honeypot" aria-hidden="true" />
     <div className="form-grid">
       {error && <p className="form-error full" role="alert">{error}</p>}
-      {!["online", "reminder"].includes(kind) && <label className="field"><span>Name</span><input name="name" autoComplete="name" required /></label>}
-      <label className="field"><span>Email</span><input name="email" type="email" autoComplete="email" required /></label>
+      {!["online", "reminder"].includes(kind) && <label className="field"><span>{kind === "visit" ? "Full Name" : "Name"}</span><input name="name" autoComplete="name" placeholder={kind === "visit" ? "Enter full name" : undefined} required /></label>}
+      <label className="field"><span>Email</span><input name="email" type="email" autoComplete="email" placeholder={kind === "visit" ? "Enter email" : undefined} required /></label>
 
       {kind === "visit" && <>
-        <label className="field full"><span>Is there anything we can help you with before Sunday?</span><textarea name="message" /></label>
-        <label className="checkbox full"><input type="checkbox" name="campusEmails" defaultChecked /> Also include me in Zoe {campus?.shortName} emails.</label>
+        <label className="field full"><span>Is there anything we can help you with before Sunday?</span><textarea name="message" placeholder="Your message" /></label>
+        <label className="checkbox full"><input type="checkbox" name="campusEmails" /> Also include me in Zoe {campus?.shortName ?? "Atlanta"} emails.</label>
       </>}
 
       {kind === "children" && <>
@@ -185,7 +185,7 @@ export function FormCard({ kind, campus, onClose }: { kind: FormKind; campus?: C
         <label className="field full"><span>Message</span><textarea name="message" required /></label>
         <label className="checkbox full"><input type="checkbox" name="consent" required /> I agree that Zoe Household may use these details to respond to my inquiry.</label>
       </>}
-      <button className="button button-dark full" type="submit" disabled={submitting}>{submitting ? "Sending…" : "Submit"}</button>
+      <button className="button button-dark full" type="submit" disabled={submitting}>{submitting ? "Sending…" : kind === "visit" ? "Send Message" : "Submit"}</button>
     </div>
   </form>;
 }
@@ -196,37 +196,103 @@ export function Modal({ children, onClose }: { children: ReactNode; onClose: () 
   </div>;
 }
 
-function nextSundayAtFour() {
-  const date = new Date();
-  const days = (7 - date.getDay()) % 7 || 7;
-  date.setDate(date.getDate() + days);
-  date.setHours(16, 0, 0, 0);
-  return date;
+const timezoneLabels: Record<string, string> = {
+  "America/New_York": "Eastern Time (ET)",
+  "America/Chicago": "Central Time (CT)",
+  "Europe/London": "United Kingdom Time",
+  "Africa/Lagos": "West Africa Time (WAT)",
+};
+
+function visitPlace(campus: Campus) {
+  if (campus.slug === "atlanta") return "Atlanta, Georgia";
+  if (campus.slug === "houston") return "Houston, Texas";
+  if (campus.slug === "london") return "London, United Kingdom";
+  return `${campus.city}, ${campus.country}`;
+}
+
+function serviceClock(schedule: string) {
+  const match = schedule.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!match) return null;
+  let hour = Number(match[1]) % 12;
+  if (match[3].toUpperCase() === "PM") hour += 12;
+  return { hour, minute: Number(match[2]) };
+}
+
+function formatClock(hour: number, minute: number) {
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${String(minute).padStart(2, "0")} ${suffix}`;
+}
+
+function zonedParts(timeZone: string, date: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const read = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return {
+    weekday: read("weekday"),
+    year: Number(read("year")),
+    month: Number(read("month")),
+    day: Number(read("day")),
+    hour: Number(read("hour")),
+    minute: Number(read("minute")),
+  };
+}
+
+function upcomingSunday(campus: Campus) {
+  const schedule = campus.slug === "atlanta" ? "Sunday, 10:00 AM" : campus.services[0]?.schedule ?? "";
+  const clock = serviceClock(schedule);
+  const target = clock ?? { hour: 10, minute: 0 };
+  const now = new Date();
+  for (let offset = 0; offset < 8; offset += 1) {
+    const probe = new Date(now.getTime() + offset * 24 * 60 * 60 * 1000);
+    const parts = zonedParts(campus.timezone, probe);
+    if (!parts.weekday.startsWith("Sun")) continue;
+    const alreadyStarted = offset === 0 && (parts.hour > target.hour || (parts.hour === target.hour && parts.minute >= target.minute));
+    if (alreadyStarted) continue;
+    return { pending: !clock, ...parts, hour: target.hour, minute: target.minute };
+  }
+  const fallback = zonedParts(campus.timezone, now);
+  return { pending: !clock, ...fallback, hour: target.hour, minute: target.minute };
 }
 
 function icsStamp(date: Date) {
   return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 }
 
-export function CalendarButton({ campus }: { campus: Campus }) {
-  const available = !campus.services[0].schedule.includes("released once available");
+function SaveVisitModal({ campus, onClose }: { campus: Campus; onClose: () => void }) {
+  const when = upcomingSunday(campus);
+  const place = visitPlace(campus);
+  const zone = timezoneLabels[campus.timezone] ?? campus.timezone;
+  const dateLabel = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })
+    .format(new Date(Date.UTC(when.year, when.month - 1, when.day)))
+    .toUpperCase();
+  const timeLabel = when.pending ? "Time will be released once available." : `Sunday · ${formatClock(when.hour, when.minute)}`;
+
   const add = () => {
-    const start = nextSundayAtFour();
-    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
-    const service = campus.services[0];
+    if (when.pending) return;
+    const endHour = when.hour + 2;
+    const stamp = (hour: number) => `${when.year}${String(when.month).padStart(2, "0")}${String(when.day).padStart(2, "0")}T${String(hour).padStart(2, "0")}${String(when.minute).padStart(2, "0")}00`;
     const content = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
       "PRODID:-//Zoe Household//Sunday Service//EN",
       "CALSCALE:GREGORIAN",
       "BEGIN:VEVENT",
-      `UID:${start.getTime()}-${campus.slug}@zoehousehold.org`,
+      `UID:${when.year}${when.month}${when.day}-${campus.slug}@zoehousehold.org`,
       `DTSTAMP:${icsStamp(new Date())}`,
-      `DTSTART:${icsStamp(start)}`,
-      `DTEND:${icsStamp(end)}`,
-      `SUMMARY:${campus.name} Sunday Service`,
-      `LOCATION:${service.address.replace(/,/g, "\\,")}`,
-      `DESCRIPTION:Join ${campus.name} for Sunday Service.`,
+      `DTSTART;TZID=${campus.timezone}:${stamp(when.hour)}`,
+      `DTEND;TZID=${campus.timezone}:${stamp(endHour)}`,
+      `SUMMARY:Zoe ${campus.shortName} Sunday Service`,
+      `LOCATION:${place.replace(/,/g, "\\,")}`,
+      `DESCRIPTION:${timeLabel}`,
       "END:VEVENT",
       "END:VCALENDAR",
     ].join("\r\n");
@@ -237,9 +303,33 @@ export function CalendarButton({ campus }: { campus: Campus }) {
     link.click();
     URL.revokeObjectURL(url);
   };
-  return <button className="button button-quiet" type="button" onClick={add} disabled={!available}>
-    {available ? "Add to Calendar" : "Calendar details will be released once available"}
-  </button>;
+
+  return <div className="save-visit">
+    <header>
+      <div>
+        <h2>Save Your Visit</h2>
+        <p>Add the next Zoe {campus.shortName} Sunday Service to your calendar.</p>
+      </div>
+      <button type="button" onClick={onClose} aria-label="Close">×</button>
+    </header>
+    <article>
+      <span>{dateLabel}</span>
+      <h3>Zoe {campus.shortName}</h3>
+      <p>{timeLabel}</p>
+      <hr />
+      <p>{place}</p>
+      <small>{zone}</small>
+    </article>
+    <button type="button" onClick={add} disabled={when.pending}>{when.pending ? "Calendar details will be released once available" : "Add to Calendar"}</button>
+  </div>;
+}
+
+export function CalendarButton({ campus }: { campus: Campus }) {
+  const [open, setOpen] = useState(false);
+  return <>
+    <button className="button button-quiet" type="button" onClick={() => setOpen(true)}>Add to Calendar</button>
+    {open && <Modal onClose={() => setOpen(false)}><SaveVisitModal campus={campus} onClose={() => setOpen(false)} /></Modal>}
+  </>;
 }
 
 export function VisitorHub({ campus }: { campus: Campus }) {
