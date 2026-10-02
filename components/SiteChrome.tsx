@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { campuses, socialLinks } from "@/data/site";
 
@@ -35,8 +36,32 @@ function LocalYear() {
 }
 
 export function SiteChrome({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const onHome = pathname === "/";
   const [open, setOpen] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const node = shellRef.current;
+    if (!node) return;
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const start = window.innerHeight * 0.22;
+        const distance = window.innerHeight * 0.55;
+        const progress = Math.min(1, Math.max(0, (window.scrollY - start) / distance));
+        node.style.setProperty("--nav-shade", progress.toFixed(3));
+      });
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [pathname]);
 
   useEffect(() => {
     document.body.classList.toggle("menu-open", open);
@@ -51,25 +76,25 @@ export function SiteChrome({ children }: { children: ReactNode }) {
 
   const close = () => setOpen(false);
 
-  return <div className="site-shell">
+  return <div className="site-shell" ref={shellRef}>
     <a className="skip-link" href="#main-content">Skip to content</a>
 
-    <header className="desktop-header">
+    <header className={`desktop-header ${onHome ? "is-home" : ""}`}>
       <Link className="desktop-brand" href="/" aria-label="Zoe Household home">
-        <img src="/assets/zoe-mark-logo.png" alt="" />
-        <span><strong>ZOE Household</strong><small>Global</small></span>
+        <img src="/figma/logo.png" alt="" />
       </Link>
       <nav className="desktop-nav" aria-label="Primary navigation">
+        <Link className={onHome ? "is-active" : ""} href="/">Home</Link>
         {nav.map((item) => <div className="desktop-nav-group" key={item.label}>
-          <Link href={item.href}>{item.label}</Link>
+          <Link className={pathname.startsWith(item.href) || (item.label === "Watch & Listen" && pathname.startsWith("/pneuma")) ? "is-active" : ""} href={item.href}>{item.label}</Link>
           <div className="desktop-dropdown">
-            {item.children.map(([label, href]) => <Link key={href} href={href}><strong>{label}</strong><span>Explore</span></Link>)}
+            {item.children.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
           </div>
         </div>)}
-        <Link href="/events">Events</Link>
-        <Link href="/resources">Resources</Link>
-        <Link href="/prayer">Prayer</Link>
-        <Link className="desktop-give" href="/give">Give</Link>
+        <Link className={pathname.startsWith("/events") ? "is-active" : ""} href="/events">Events</Link>
+        <Link className={pathname.startsWith("/resources") ? "is-active" : ""} href="/resources">Resources</Link>
+        <Link className={pathname.startsWith("/prayer") ? "is-active" : ""} href="/prayer">Prayer</Link>
+        <Link className={`desktop-give${pathname.startsWith("/give") ? " is-active" : ""}`} href="/give">Give</Link>
       </nav>
     </header>
 
@@ -105,22 +130,35 @@ export function SiteChrome({ children }: { children: ReactNode }) {
 
     <main id="main-content">{children}</main>
 
-    <footer className="stitch-footer">
-      <div className="stitch-footer-inner">
-        <Link className="footer-wordmark" href="/">zoe.</Link>
-        <div className="footer-socials" aria-label="Zoe Household social links">
-          {(Object.keys(socialLinks) as IconName[]).map((name) => <a key={name} href={socialLinks[name]} target="_blank" rel="noreferrer" aria-label={name}><SocialIcon name={name} /></a>)}
+    <footer className={`fig-footer ${onHome ? "is-home" : "is-page"}`}>
+      <div className="fig-footer-panel">
+        <div className="fig-member">
+          <div>
+            <strong>Member login</strong>
+            <p>Already part of the household? Access your ChurchOS account, stay connected, and manage your member information.</p>
+          </div>
+          <a className="fig-btn fig-btn-lime" href="https://churchos.faith/" target="_blank" rel="noreferrer">ChurchOS Login</a>
         </div>
-        <div className="footer-link-grid">
-          <a href="https://churchos.faith/" target="_blank" rel="noreferrer">Member Login</a>
-          <Link href="/about/faqs#general-inquiry">General Inquiry</Link>
-          <Link href="/prayer">Prayer Request</Link>
-          <a href="mailto:connect@zoehousehold.org">Connect</a>
-          <Link href="/about/faqs">Privacy</Link>
-          <Link href="/about/faqs">Terms</Link>
+        <div className="fig-footer-grid">
+          <div className="fig-footer-brand">
+            <strong>ZOE HOUSEHOLD</strong>
+            <em>The life of God.</em>
+            <p>A global household of people discovering, living, and revealing the life of God in Christ.</p>
+            <div className="footer-socials" aria-label="Zoe Household social links">
+              {(Object.keys(socialLinks) as IconName[]).map((name) => <a key={name} href={socialLinks[name]} target="_blank" rel="noreferrer" aria-label={name}><SocialIcon name={name} /></a>)}
+            </div>
+          </div>
+          <div><p className="fig-foot-label">Explore</p><Link href="/">Home</Link><Link href="/about">About</Link><Link href="/visit">Visit</Link><Link href="/sermons">Watch & Listen</Link><Link href="/events">Events</Link><Link href="/resources">Resources</Link><Link href="/prayer">Prayer</Link><Link href="/give">Give</Link></div>
+          <div><p className="fig-foot-label">About</p><Link href="/about">Who We Are</Link><Link href="/about/beliefs">What We Believe</Link><Link href="/about/faqs">FAQs</Link></div>
+          <div><p className="fig-foot-label">Watch & Listen</p><Link href="/sermons">Sermons</Link><Link href="/pneuma-worship">Pneuma Worship</Link></div>
+          <div><p className="fig-foot-label">Resources</p><Link href="/resources">Devotionals</Link><Link href="/resources/scholarship">Zoe Scholarship</Link></div>
         </div>
-        <p>© <LocalYear /> Zoe Household. All Rights Reserved</p>
+        <div className="fig-footer-bottom">
+          <span>© <LocalYear /> Zoe Household. All rights reserved.</span>
+          <span><Link href="/about/faqs">Privacy Policy</Link><Link href="/about/faqs">Terms of Use</Link></span>
+        </div>
       </div>
+      <p className="fig-footer-mark">ZOE HOUSEHOLD</p>
     </footer>
   </div>;
 }
