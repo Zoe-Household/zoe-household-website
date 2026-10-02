@@ -1,6 +1,19 @@
 import type { Metadata, Viewport } from "next";
+import { Cormorant_Garamond, Lexend } from "next/font/google";
 import { SiteChrome } from "@/components/SiteChrome";
 import "./globals.css";
+
+const display = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-display",
+});
+
+const sans = Lexend({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "700", "900"],
+  variable: "--font-sans",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.zoehousehold.org"),
@@ -19,11 +32,11 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#0f191b",
+  themeColor: "#152022",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en">
+  return <html lang="en" className={`${display.variable} ${sans.variable}`}>
     <body>
       <SiteChrome>{children}</SiteChrome>
     </body>
