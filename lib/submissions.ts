@@ -45,7 +45,9 @@ const schemasByKind = {
     email: emailField,
   }),
   online: z.object({
+    name: z.string().trim().max(120).optional().or(z.literal("")),
     email: emailField,
+    phone: phoneField,
   }),
   prayer: baseSchema.extend({
     name: nameField,
