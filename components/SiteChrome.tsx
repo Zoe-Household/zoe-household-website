@@ -122,7 +122,7 @@ export function SiteChrome({ children }: { children: ReactNode }) {
       </nav>
     </header>
 
-    <header className="mobile-header">
+    <header className={`mobile-header${onHome ? " is-home" : ""}`}>
       <Link className="mobile-wordmark" href="/" aria-label="Zoe Household home">zoe</Link>
       <Link className="mobile-give" href="/give">Give</Link>
     </header>

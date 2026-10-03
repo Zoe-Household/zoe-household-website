@@ -3929,20 +3929,30 @@ button.hub-card:hover { transform: translateY(-4px); border-color: var(--gold); 
   .giving-grid, .sermon-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1080px) {
   body::before { display: none; }
   .desktop-header { display: none; }
   .mobile-header {
-    position: absolute;
-    inset: 0 0 auto;
+    position: sticky;
+    top: 0;
     z-index: 950;
     display: flex;
     align-items: center;
     justify-content: space-between;
     min-height: 72px;
     padding: 0 20px;
-    color: white;
+    color: #152022;
+    background: rgba(255, 255, 255, .94);
+    backdrop-filter: blur(16px);
   }
+  .mobile-header.is-home {
+    position: absolute;
+    inset: 0 0 auto;
+    color: #fff;
+    background: transparent;
+    backdrop-filter: none;
+  }
+  .mobile-header:not(.is-home) .mobile-give { color: #152022; border-color: #152022; }
   .mobile-wordmark { font-family: Georgia, "Times New Roman", serif; font-size: 34px; letter-spacing: -.08em; text-decoration: none; }
   .mobile-give { padding: 8px 16px; border: 1px solid rgba(255,255,255,.58); border-radius: 99px; text-decoration: none; font-size: 11px; font-weight: 900; }
   .mobile-fab {
@@ -5160,6 +5170,124 @@ h1, h2 { letter-spacing: -0.035em; }
   animation: sectionRise .85s cubic-bezier(.22, .7, .2, 1) both;
   animation-timeline: view();
   animation-range: entry 0% entry 42%;
+}
+
+@media (max-width: 1080px) {
+  .mobile-header:not(.is-home),
+  .mobile-header:not(.is-home) .mobile-wordmark,
+  .mobile-header:not(.is-home) .mobile-give { color: #152022; }
+  .site-shell { overflow-x: clip; }
+  .mobile-drawer { overflow: hidden; }
+  .mobile-drawer-inner { width: 100%; max-width: 100%; box-sizing: border-box; }
+
+  .fig-hero { min-height: 100svh; padding-top: 88px; }
+  .fig-hero h1 { font-size: clamp(46px, 12vw, 72px); }
+  .fig-hero p { font-size: 16px; }
+  .fig-hero-copy { width: min(100% - 32px, 640px); }
+  .fig-actions { width: min(100%, 360px); }
+  .fig-actions .fig-btn { width: 100%; }
+
+  .fig-who, .fig-band, .fig-events, .fig-cta, .fig-resources,
+  .about-hero, .about-vision, .about-pastor, .about-nations,
+  .belief-hero, .belief-body, .faq-panel, .faq-inquiry,
+  .sermon-topics, .sermon-library, .sermon-subscribe,
+  .pneuma-meet, .pneuma-listen, .events-now, .events-moments,
+  .atlanta-join, .atlanta-arrows, .visit-plan, .sch-qualify,
+  .sch-dates, .sch-apply, .prayer-with, .prayer-believe,
+  .fig-footer, .fig-footer-panel {
+    padding: 56px 20px;
+  }
+  .belief-hero, .about-hero, .faq-hero, .visit-hero, .atlanta-hero,
+  .resources-hero, .sch-hero, .sermon-hero, .give-hero, .events-hero,
+  .pneuma-hero { padding-top: 112px; }
+
+  .fig-who-grid, .fig-who-points, .fig-footer-grid, .fig-resource-row,
+  .fig-event-row, .fig-campus-row.three, .fig-campus-row.four,
+  .belief-body, .faq-topics, .faq-form > div, .visit-plan-row,
+  .atlanta-join > div, .atlanta-arrows, .sch-qualify > div, .sch-ready,
+  .sch-intro, .sermon-library-head, .sermon-grid, .sermon-topic-row,
+  .sermon-video-grid, .podcast-feature, .give-choice > div, .give-verse,
+  .events-ways > div, .events-now, .events-global > div, .prayer-with,
+  .resources-scholarship > div, .pneuma-meet, .pneuma-listen, .pneuma-hang {
+    grid-template-columns: 1fr;
+  }
+  .fig-campus-photo, .fig-campus-row.four .fig-campus-photo { height: 280px; }
+  .fig-feature img, .about-hero-photo, .about-pastor img, .about-pastor figure { width: 100%; height: 240px; }
+  .about-pastor figure { flex-basis: auto; }
+  .about-vision, .about-pastor, .fig-member, .fig-band-head, .fig-footer-bottom,
+  .pneuma-releases header, .visit-found article, .visit-online-row { flex-direction: column; align-items: stretch; }
+  .fig-who-light { justify-items: stretch; }
+  .fig-footer .fig-btn-lime, .fig-member .fig-btn, .visit-found-actions { width: 100%; }
+  .visit-found-actions { flex-direction: column; }
+  .fig-footer-brand em { font-size: 40px; line-height: 1.1; }
+  .fig-footer-mark { font-size: clamp(36px, 12vw, 72px); text-align: center; }
+  .fig-kicker, .fig-who-dark h2, .fig-resource-row h3, .fig-event-row strong,
+  .about-hero h1, .belief-hero h1, .faq-hero h1, .visit-hero h1, .atlanta-hero h1,
+  .resources-hero h1, .sch-hero h1, .give-hero h1, .events-hero h1, .pneuma-hero h1,
+  .sermon-hero h1, .sch-dates h2, .events-moments h2, .pneuma-releases h2, .give-verse h2,
+  .prayer-teach h2, .teaching-library h2 {
+    font-size: clamp(34px, 10vw, 48px);
+  }
+
+  .faq-topics, .faq-panel, .sch-banner, .sch-intro, .pneuma-hang, .pneuma-releases,
+  .events-ways, .events-global, .give-choice, .give-verse, .prayer-teach,
+  .teaching-library, .sermon-library, .resources-scholarship, .resources-grow {
+    width: min(100% - 32px, 1240px);
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .faq-panel, .give-verse, .sch-dates, .sermon-topics { padding: 32px 20px; }
+  .give-verse { min-height: 0; }
+  .give-verse p { padding-left: 16px; }
+  .faq-popular { flex-wrap: wrap; justify-content: center; }
+  .faq-search { width: 100%; }
+
+  .visit-finder { width: min(100% - 32px, 720px); margin-inline: auto; box-sizing: border-box; }
+  .visit-finder div { flex-direction: column; align-items: stretch; width: 100%; }
+  .visit-finder input, .visit-finder .fig-btn-lime { width: 100%; }
+  .sermon-topic-banner { padding: 16px; }
+  .sermon-topic-banner article { width: 100%; box-sizing: border-box; }
+  .sermon-topic-banner h2 { font-size: clamp(32px, 9vw, 44px); }
+  .sch-dates ol { grid-template-columns: 1fr; }
+  .sch-dates li > span::before { display: none; }
+
+  .pneuma-hang { margin-top: -48px; }
+  .pneuma-listen > div { position: static; width: auto; max-width: none; transform: none; }
+  .pneuma-listen img { height: 240px; }
+  .pneuma-releases article { flex-basis: 86%; min-height: 420px; }
+  .pneuma-releases footer { flex-wrap: wrap; }
+  .podcast-grid { grid-template-columns: 1fr; }
+  .podcast-player { flex-wrap: wrap; }
+  .podcast-player > div { min-width: 0; width: 100%; }
+  .library-feature { min-height: 280px; }
+  .library-feature strong { font-size: 28px; }
+
+  .events-moments > div { max-width: 100%; overflow-x: auto; }
+  .atlanta-arrows figure { height: 280px; }
+  .nations-map { height: 280px; }
+  .modal-card, .form-card.is-visit, .save-visit { width: min(100% - 24px, 673px); padding: 24px; box-sizing: border-box; }
+  iframe { max-width: 100%; }
+
+  .events-ways, .events-global, .give-choice, .pneuma-releases, .faq-panel,
+  .prayer-teach, .resources-scholarship, .resources-grow, .sermon-topics, .sermon-library {
+    justify-items: stretch;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .events-ways header, .events-ways h2, .events-ways p,
+  .events-global header, .give-choice header, .prayer-teach .sermon-library-head,
+  .fig-band-head, .fig-resource-row, .fig-resource-row article, .sermon-grid, .sermon-card {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .prayer-teach .sermon-library-head, .sermon-grid, .events-ways > div { grid-template-columns: 1fr; }
+  .resources-scholarship { padding: 40px 20px 56px; }
+  .fig-resources { box-sizing: border-box; }
 }
 
 
