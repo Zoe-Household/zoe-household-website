@@ -26,6 +26,35 @@ const nav = [
   { label: "Watch & Listen", href: "/sermons", children: [["Sermons", "/sermons"], ["Pneuma Worship", "/pneuma-worship"]] },
 ] as const;
 
+function DesktopMenu({ item, active }: { item: (typeof nav)[number]; active: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+
+  const close = () => {
+    setOpen(false);
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && ref.current?.contains(focused)) focused.blur();
+  };
+
+  return <div
+    className={`desktop-nav-group${open ? " is-open" : ""}`}
+    ref={ref}
+    onMouseEnter={() => setOpen(true)}
+    onMouseLeave={close}
+    onFocus={() => setOpen(true)}
+    onBlur={(event) => {
+      if (!ref.current?.contains(event.relatedTarget as Node | null)) setOpen(false);
+    }}
+  >
+    <Link className={active ? "is-active" : ""} href={item.href}>{item.label}</Link>
+    <div className="desktop-dropdown">
+      <div>
+        {item.children.map(([label, href]) => <Link key={href} href={href} onClick={close}>{label}</Link>)}
+      </div>
+    </div>
+  </div>;
+}
+
 function LocalYear() {
   const [year, setYear] = useState(new Date().getFullYear());
   useEffect(() => {
@@ -85,12 +114,7 @@ export function SiteChrome({ children }: { children: ReactNode }) {
       </Link>
       <nav className="desktop-nav" aria-label="Primary navigation">
         <Link className={onHome ? "is-active" : ""} href="/">Home</Link>
-        {nav.map((item) => <div className="desktop-nav-group" key={item.label}>
-          <Link className={pathname.startsWith(item.href) || (item.label === "Watch & Listen" && pathname.startsWith("/pneuma")) ? "is-active" : ""} href={item.href}>{item.label}</Link>
-          <div className="desktop-dropdown">
-            {item.children.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
-          </div>
-        </div>)}
+        {nav.map((item) => <DesktopMenu key={item.label} item={item} active={pathname.startsWith(item.href) || (item.label === "Watch & Listen" && pathname.startsWith("/pneuma"))} />)}
         <Link className={pathname.startsWith("/events") ? "is-active" : ""} href="/events">Events</Link>
         <Link className={pathname.startsWith("/resources") ? "is-active" : ""} href="/resources">Resources</Link>
         <Link className={pathname.startsWith("/prayer") ? "is-active" : ""} href="/prayer">Prayer</Link>

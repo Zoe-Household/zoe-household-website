@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { CalendarButton, CampusFinder, FormCard, GivingCard, Modal, SermonLibrary, VisitorHub } from "@/components/Interactive";
+import { NationsMap } from "@/components/NationsMap";
+import { TeachingLibrary } from "@/components/TeachingLibrary";
 import { SocialIcon } from "@/components/SiteChrome";
 import { beliefs, Campus, campuses, sermons, socialLinks } from "@/data/site";
 
@@ -78,7 +80,11 @@ const homeCampuses = [
 function HomePage() {
   return <>
     <section className="fig-hero">
-      <div className="fig-hero-media" />
+      <div className="fig-hero-media">
+        <video autoPlay muted loop playsInline poster="/hero/zoe-welcome-team.jpg">
+          <source src="/hero/zoe-hero.mp4?v=2" type="video/mp4" />
+        </video>
+      </div>
       <div className="fig-hero-copy">
         <span className="fig-pill">Greek: ζωή</span>
         <h1>The life of God</h1>
@@ -127,20 +133,24 @@ function HomePage() {
       </div>
       <div className="fig-campus-row three">
         {homeCampuses.slice(0, 3).map((campus) => <Link className="fig-campus-card" href={campus.href} key={campus.href}>
-          <strong>{campus.name}</strong>
-          <span>{campus.place}</span>
           <div className="fig-campus-photo" style={{ backgroundImage: `url(${campus.image})` }}>
-            {"pastor" in campus && campus.pastor && <em><small>Campus Pastor</small>{campus.pastor}</em>}
-            <b>Explore Campus</b>
+            <div>
+              <strong>{campus.name}</strong>
+              <span>{campus.place}</span>
+              {"pastor" in campus && campus.pastor ? <em>{campus.pastor}</em> : null}
+            </div>
+            <b>Explore</b>
           </div>
         </Link>)}
       </div>
       <div className="fig-campus-row four">
         {homeCampuses.slice(3).map((campus) => <Link className="fig-campus-card" href={campus.href} key={campus.href}>
-          <strong>{campus.name}</strong>
-          <span>{campus.place}</span>
           <div className="fig-campus-photo" style={{ backgroundImage: `url(${campus.image})` }}>
-            <b>Explore Campus</b>
+            <div>
+              <strong>{campus.name}</strong>
+              <span>{campus.place}</span>
+            </div>
+            <b>Explore</b>
           </div>
         </Link>)}
       </div>
@@ -216,7 +226,6 @@ function HomePage() {
     </section>
 
     <section className="fig-cta fig-cta-close">
-      <p className="fig-watermark" aria-hidden="true">ZOE</p>
       <h2>Find Your Place in the Household.</h2>
       <p>Connect with a campus, find community, and become part of a people committed to knowing Jesus, growing together and shining the light of the gospel.</p>
       <div className="fig-actions">
@@ -261,7 +270,7 @@ function AboutPage() {
         <h2>Our Lead Pastor</h2>
         <p>Pastor Dolapo Lawal is the Lead Pastor of The Zoe Household Global, a fast growing vibrant church with expressions in Atlanta, USA and Lagos, Nigeria. Called to reveal Christ, Pastor Dolapo teaches the word of God with simplicity and precision. His depth in the word of God and passion to reach the world with truth has endeared many to His ministry. Pastor Dolapo has released numerous songs for the edification of the body of Christ. He currently resides in Atlanta, USA where he currently pastors The Zoe Household Atlanta. He is happily married to Temiloluwa and they are blessed with two lovely children.</p>
         <div className="fig-actions">
-          <a className="fig-btn fig-btn-solid" href="https://www.youtube.com/@PastorDolapoLawal" target="_blank" rel="noreferrer">Read Full Biography</a>
+          <a className="fig-btn fig-btn-solid" href="https://www.pastordolapolawal.com/" target="_blank" rel="noreferrer">Read Full Biography</a>
           <a className="fig-btn fig-btn-ghost" href="/sermons">Watch A Sermon</a>
         </div>
       </div>
@@ -275,7 +284,7 @@ function AboutPage() {
         </div>
         <Link className="fig-btn fig-btn-lime" href="/visit">Explore All Campus</Link>
       </div>
-      <img src="/figma/about-nations.png" alt="Map of Zoe Household campuses" />
+      <NationsMap />
     </section>
   </>;
 }
@@ -698,20 +707,24 @@ function VisitPage() {
       </div>
       <div className="fig-campus-row three">
         {homeCampuses.slice(0, 3).map((campus) => <Link className="fig-campus-card" href={campus.href} key={campus.href}>
-          <strong>{campus.name}</strong>
-          <span>{campus.place}</span>
           <div className="fig-campus-photo" style={{ backgroundImage: `url(${campus.image})` }}>
-            {"pastor" in campus && campus.pastor && <em><small>Campus Pastor</small>{campus.pastor}</em>}
-            <b>Explore Campus</b>
+            <div>
+              <strong>{campus.name}</strong>
+              <span>{campus.place}</span>
+              {"pastor" in campus && campus.pastor ? <em>{campus.pastor}</em> : null}
+            </div>
+            <b>Explore</b>
           </div>
         </Link>)}
       </div>
       <div className="fig-campus-row four">
         {homeCampuses.slice(3).map((campus) => <Link className="fig-campus-card" href={campus.href} key={campus.href}>
-          <strong>{campus.name}</strong>
-          <span>{campus.place}</span>
           <div className="fig-campus-photo" style={{ backgroundImage: `url(${campus.image})` }}>
-            <b>Explore Campus</b>
+            <div>
+              <strong>{campus.name}</strong>
+              <span>{campus.place}</span>
+            </div>
+            <b>Explore</b>
           </div>
         </Link>)}
       </div>
@@ -782,7 +795,7 @@ function CampusPage({ campus }: { campus: Campus }) {
   const verse = atlanta ? "Let all that you do be done in love" : campus.verse;
   const verseRef = atlanta ? "1 Corinthians 16:14" : campus.verseRef;
   const image = atlanta ? "/figma/visit-atlanta-hero-225203.png" : campus.image;
-  return <>
+  return <div className="campus-page" key={campus.slug}>
     <section className="belief-hero atlanta-hero" style={{ backgroundImage: `url("${image}")` }}>
       <div className="about-hero-copy">
         <span className="belief-pill">Zoe Household — {campus.shortName}</span>
@@ -872,7 +885,7 @@ function CampusPage({ campus }: { campus: Campus }) {
       </div>
     </section>
     {modal && <Modal onClose={() => setModal(null)}><FormCard kind={modal} campus={campus} onClose={() => setModal(null)} /></Modal>}
-  </>;
+  </div>;
 }
 
 const sermonLibrary = [
@@ -881,16 +894,12 @@ const sermonLibrary = [
 ];
 
 function SermonsPage() {
-  const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<"latest" | "oldest">("latest");
-  const [shown, setShown] = useState(3);
-  const filtered = sermonLibrary.filter((sermon) => `${sermon.title} ${sermon.topic} ${sermon.series} ${sermon.campus}`.toLowerCase().includes(query.trim().toLowerCase()));
-  const ordered = sort === "latest" ? filtered : [...filtered].reverse();
-  const visible = ordered.slice(0, shown);
+  const [seed, setSeed] = useState("");
+  const [seedKey, setSeedKey] = useState(0);
 
   const explore = (topic: string) => {
-    setQuery(topic);
-    setShown(3);
+    setSeed(topic);
+    setSeedKey((key) => key + 1);
     document.getElementById("sermon-library")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
@@ -907,39 +916,7 @@ function SermonsPage() {
       </div>
     </section>
 
-    <section id="sermon-library" className="sermon-library">
-      <div className="sermon-library-head">
-        <div>
-          <h2>Explore Our Sermons</h2>
-          <p>Find messages that speak to where you are by exploring sermons by topic, series, or campuses.</p>
-        </div>
-        <label className="sermon-search">
-          <input value={query} onChange={(event) => { setQuery(event.target.value); setShown(3); }} placeholder="Search series, topics or campus" aria-label="Search series, topics or campus" />
-          <select value={sort} onChange={(event) => setSort(event.target.value as "latest" | "oldest")} aria-label="Sort sermons">
-            <option value="latest">Sort: Latest</option>
-            <option value="oldest">Sort: Oldest</option>
-          </select>
-        </label>
-      </div>
-      <div className="sermon-grid">
-        {visible.map((sermon) => (
-          <a className="sermon-card" href={socialLinks.youtube} target="_blank" rel="noreferrer" key={sermon.title}>
-            <span className="sermon-thumb" style={{ backgroundImage: 'url("/figma/sermon-thumb-66e69f.png")' }}>
-              <i aria-hidden="true" />
-              {sermon.duration ? <em>{sermon.duration}</em> : null}
-            </span>
-            <span className="sermon-copy">
-              <small>Latest sermons</small>
-              <strong>{sermon.title}</strong>
-              <span>Pastor Dolapo Lawal</span>
-              <span className="sermon-meta"><em>{sermon.campus}</em>{sermon.date ? <em>{sermon.date}</em> : <em>{sermon.series}</em>}</span>
-            </span>
-          </a>
-        ))}
-      </div>
-      {visible.length === 0 ? <p className="sermon-empty">No sermons match that search.</p> : null}
-      {shown < ordered.length ? <button className="sermon-more" type="button" onClick={() => setShown((count) => count + 3)}>Load more Sermons <i aria-hidden="true">→</i></button> : null}
-    </section>
+    <TeachingLibrary seed={seed} seedKey={seedKey} />
 
     <section className="sermon-topics">
       <div className="sermon-topic-banner" style={{ backgroundImage: 'linear-gradient(rgba(0,0,0,.2), rgba(0,0,0,.2)), url("/figma/asset-03-102235.png")' }}>
@@ -974,16 +951,45 @@ function SermonsPage() {
 
 const pneumaFaqs = [
   ["Where can I listen to Pneuma Worship?", "Pneuma Worship is on Spotify. Listen on Spotify opens the latest music from the ministry."],
-  ["What has been released?", "For By Grace is a 2024 single from Pneuma Worship."],
+  ["What has been released?", "The catalog includes FOR BY GRACE (2026), the singles Inhabit, Responsible Father, Gathering Of Believers, Amen Hallelujah, and Abba’s Beloved, and the 2024 album Pneuma (Live)."],
   ["Who is Pneuma Worship?", "Pneuma Worship is the worship ministry of Zoe Household, creating music that helps us encounter God and carry worship beyond our gatherings."],
   ["Can I experience this at a gathering?", "Yes. Worship is part of the gathering at every Zoe campus. Find the campus closest to you and come as you are."],
   ["How do I hear new music?", "Follow Pneuma Worship on Spotify to hear new releases as they come out."],
 ];
 
+const pneumaSongs = [
+  { title: "For By Grace", detail: "FOR BY GRACE · 2026", art: "/pneuma/art-grace.jpg", href: "https://music.apple.com/us/album/for-by-grace/6805026466?i=6805026577" },
+  { title: "Victory Chant", detail: "FOR BY GRACE · 2026", art: "/pneuma/art-grace.jpg", href: "https://music.apple.com/us/album/victory-chant/6805026466?i=6805026580" },
+  { title: "Anchor", detail: "FOR BY GRACE · 2026", art: "/pneuma/art-grace.jpg", href: "https://music.apple.com/us/album/anchor/6805026466?i=6805026578" },
+  { title: "Worthy", detail: "FOR BY GRACE · 2026", art: "/pneuma/art-grace.jpg", href: "https://music.apple.com/us/album/worthy/6805026466?i=6805026575" },
+  { title: "Responsible Father", detail: "Single · 2026", art: "/pneuma/art-father.jpg", href: "https://music.apple.com/us/album/responsible-father/6773406847?i=6773406848" },
+  { title: "Gathering Of Believers", detail: "Single · 2026", art: "/pneuma/art-gathering.jpg", href: "https://music.apple.com/us/album/gathering-of-believers/1873211759?i=1873211760" },
+  { title: "Inhabit", detail: "Single · 2025", art: "/pneuma/art-inhabit.jpg", href: "https://music.apple.com/us/album/inhabit-feat-david-oguche/1837828123?i=1837828125" },
+  { title: "Quickening Fire", detail: "Pneuma (Live) · 2024", art: "/pneuma/art-live.jpg", href: "https://music.apple.com/us/album/quickening-fire-feat-joshua-oguche/1784362134?i=1784362141" },
+  { title: "Son of God", detail: "Pneuma (Live) · 2024", art: "/pneuma/art-live.jpg", href: "https://music.apple.com/us/album/son-of-god/1784362134?i=1784362143" },
+  { title: "Welldone", detail: "Pneuma (Live) · 2024", art: "/pneuma/art-live.jpg", href: "https://music.apple.com/us/album/welldone/1784362134?i=1784362145" },
+  { title: "Friend and Partner", detail: "Pneuma (Live) · 2024", art: "/pneuma/art-live.jpg", href: "https://music.apple.com/us/album/friend-and-partner/1784362134?i=1784362142" },
+  { title: "Christ In Me", detail: "Pneuma (Live) · 2024", art: "/pneuma/art-live.jpg", href: "https://music.apple.com/us/album/christ-in-me-feat-godspower-ekpo-live/1784362134?i=1784362137" },
+  { title: "Pleroo", detail: "Pneuma (Live) · 2024", art: "/pneuma/art-live.jpg", href: "https://music.apple.com/us/album/pleroo/1784362134?i=1784362135" },
+  { title: "Amen Hallelujah", detail: "Single · 2024", art: "/pneuma/art-amen.jpg", href: "https://music.apple.com/us/album/amen-hallelujah/1779491441?i=1779491442" },
+  { title: "Abba's Beloved", detail: "Single · 2024", art: "/pneuma/art-abba.jpg", href: "https://music.apple.com/us/album/abbas-beloved/1752259312?i=1752259313" },
+];
+
 function PneumaPage() {
   const [open, setOpen] = useState(0);
+  const releasesRef = useRef<HTMLDivElement>(null);
+  const moveReleases = (direction: number) => {
+    const node = releasesRef.current;
+    const card = node?.querySelector("article");
+    if (!node || !card) return;
+    node.scrollBy({ left: direction * (card.clientWidth + 24), behavior: "smooth" });
+  };
   return <>
-    <section className="belief-hero pneuma-hero" style={{ backgroundImage: 'url("/figma/pneuma-hero-1c7cfc.png")' }}>
+    <section className="belief-hero pneuma-hero">
+      <video className="pneuma-hero-video" autoPlay muted loop playsInline poster="/figma/pneuma-hero-1c7cfc.png">
+        <source src="/pneuma/pneuma-hero.mp4" type="video/mp4" />
+      </video>
+      <img className="pneuma-hero-logo" src="/pneuma/pneuma-logo.png" alt="Pneuma Worship Collective" />
       <div className="about-hero-copy">
         <span className="pneuma-pill">Worship Ministry</span>
         <h1>Pneuma Worship</h1>
@@ -995,13 +1001,31 @@ function PneumaPage() {
       </div>
     </section>
 
-    <section className="pneuma-meet">
-      <img src="/figma/pneuma-team.png" alt="Pneuma Worship" />
+    <div className="pneuma-hang" aria-label="Listen">
+      <iframe
+        title="Pneuma Live on Apple Music"
+        allow="autoplay *; encrypted-media *; fullscreen *; clipboard-write"
+        height={450}
+        sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"
+        src="https://embed.music.apple.com/au/album/pneuma-live/1784362134"
+      />
       <div>
-        <h2>Meet Pneuma Worship</h2>
-        <p>Pneuma Worship is our worship ministry, creating music that helps us encounter God and carry worship beyond our gatherings.</p>
+        <iframe
+          title="Pneuma Worship on Spotify"
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          height={152}
+          loading="lazy"
+          src="https://open.spotify.com/embed/album/5JxkLybitjFLML464FtikB?utm_source=generator&theme=0"
+        />
+        <iframe
+          title="Psalm 100 Overflow on Apple Music"
+          allow="autoplay *; encrypted-media *; fullscreen *; clipboard-write"
+          height={175}
+          sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"
+          src="https://embed.music.apple.com/au/song/psalm-100-overflow/1767155662"
+        />
       </div>
-    </section>
+    </div>
 
     <section className="pneuma-listen">
       <img src="/figma/pneuma-photo-1.png" alt="" />
@@ -1018,19 +1042,25 @@ function PneumaPage() {
 
     <section id="releases" className="pneuma-releases">
       <header>
-        <h2>Previously Released From Pneuma Worship</h2>
-        <p>Discover previously and latest released from Pneuma Worship</p>
+        <div>
+          <h2>Previously Released From Pneuma Worship</h2>
+          <p>The songs themselves, from the latest album back through the live record.</p>
+        </div>
+        <div className="pneuma-release-nav">
+          <button type="button" onClick={() => moveReleases(-1)} aria-label="Previous songs">←</button>
+          <button type="button" onClick={() => moveReleases(1)} aria-label="Next songs">→</button>
+        </div>
       </header>
-      <div>
-        {["For By Grace", "For By Grace", "For By Grace"].map((title, index) => (
-          <article key={index} style={{ backgroundImage: 'linear-gradient(180deg, rgba(0,0,0,.6), rgba(0,0,0,.13) 40%, rgba(0,0,0,.8)), url("/figma/pneuma-for-by-grace-40f8fc.png")' }}>
+      <div className="pneuma-track" ref={releasesRef}>
+        {pneumaSongs.map((song) => (
+          <article key={song.href} style={{ backgroundImage: `linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.12) 42%, rgba(0,0,0,.82)), url("${song.art}")` }}>
             <div>
-              <h3>{title}</h3>
+              <h3>{song.title}</h3>
               <span>Pneuma Worship</span>
             </div>
             <footer>
-              <em>2024: Single Album</em>
-              <a href={socialLinks.spotify} target="_blank" rel="noreferrer">Listen Now <i aria-hidden="true">→</i></a>
+              <em>{song.detail}</em>
+              <a href={song.href} target="_blank" rel="noreferrer">Listen Now <i aria-hidden="true">→</i></a>
             </footer>
           </article>
         ))}
