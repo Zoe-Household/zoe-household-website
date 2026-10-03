@@ -14,3 +14,4 @@ Thumbs.db
 
 # Local form-submission storage (interim store until a real DB/CMS exists)
 /data/submissions/
+.vercel
