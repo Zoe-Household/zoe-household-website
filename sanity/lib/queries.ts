@@ -1,0 +1,42 @@
+import { groq } from "next-sanity";
+
+export const EVENTS_QUERY = groq`*[_type == "event"] | order(coalesce(order, 50) asc, startDate desc){
+  "slug": slug.current,
+  title,
+  kind,
+  status,
+  featured,
+  startDate,
+  endDate,
+  dateLabel,
+  location,
+  "campusSlug": campus->slug.current,
+  image,
+  summary,
+  intro,
+  body,
+  registerUrl
+}`;
+
+export const CAMPUSES_QUERY = groq`*[_type == "campus"] | order(coalesce(order, 50) asc){
+  "slug": slug.current,
+  name,
+  shortName,
+  place,
+  pastor,
+  phone,
+  email,
+  instagram,
+  address,
+  lat,
+  lng,
+  verse,
+  verseRef,
+  whatToExpect,
+  gettingThere,
+  parking,
+  languages,
+  services[]{ name, schedule, address },
+  heroImage,
+  gallery[]{ ..., "alt": alt }
+}`;
