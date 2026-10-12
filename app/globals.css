@@ -1319,9 +1319,9 @@ button { cursor: pointer; }
   .release-track { grid-auto-columns: min(72%, 300px); }
   .listen-gallery { gap: 8px; }
   .listen-row > .btn { width: 100%; }
-  .moment-grid, .moments-grid { columns: 2; column-gap: 12px; }
-  .moment-tile { margin-bottom: 12px; border-radius: 16px; }
-  .moments-grid > img { margin-bottom: 12px; }
+  .moment-grid, .moments-grid { columns: 3; column-gap: 8px; margin-bottom: 24px; }
+  .moment-tile { margin-bottom: 8px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+  .moments-grid > img { margin-bottom: 8px; border-radius: 12px; }
   .form-row, .form-grid, .child-fields { grid-template-columns: minmax(0, 1fr); }
   .sermon-search { width: 100%; }
   .sermon-video-grid { grid-template-columns: minmax(0, 1fr); }
