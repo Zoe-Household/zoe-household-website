@@ -16,6 +16,8 @@ export type Campus = {
   phone?: string;
   pastor?: string;
   place: string;
+  lat: number;
+  lng: number;
   portrait: string;
   image: string;
   verse: string;
@@ -38,6 +40,8 @@ export const campuses: Campus[] = [
     address: "Continental Suites, Ibara, Abeokuta",
     pastor: "Ola Akinosi",
     place: "Abeokuta, Nigeria",
+    lat: 7.1290121,
+    lng: 3.3264549,
     portrait: "/figma/campus-abeokuta-7f776f.jpg",
     image: "/figma/asset-20.jpg",
     verse: "You make known to me the path of life; in your presence there is fullness of joy.",
@@ -57,6 +61,8 @@ export const campuses: Campus[] = [
     phone: "+1 943-245-0356",
     pastor: "Temi Lawal",
     place: "Atlanta, Georgia",
+    lat: 33.741,
+    lng: -84.6412,
     portrait: "/figma/campus-atlanta-42d4b1.jpg",
     image: "/figma/visit-atlanta-hero-225203.jpg",
     verse: "I have come that they may have life, and have it to the full.",
@@ -78,6 +84,8 @@ export const campuses: Campus[] = [
     address: "12658 Goar Rd, Houston, TX 77077",
     pastor: "Korede Megbope",
     place: "Houston, Texas",
+    lat: 29.7546796,
+    lng: -95.6082143,
     portrait: "/figma/campus-houston-2ae206.jpg",
     image: "/figma/asset-16.jpg",
     verse: "The Spirit of him who raised Jesus from the dead is living in you.",
@@ -97,6 +105,8 @@ export const campuses: Campus[] = [
     phone: "+234 816 266 5803",
     pastor: "Michael Mosaku",
     place: "Ikeja, Lagos",
+    lat: 6.6347829,
+    lng: 3.3592696,
     portrait: "/figma/campus-ikeja.jpg",
     image: "/figma/asset-17.jpg",
     verse: "If anyone is in Christ, the new creation has come.",
@@ -116,6 +126,8 @@ export const campuses: Campus[] = [
     phone: "+234 704 142 3847",
     pastor: "Emmanuel Adeola",
     place: "Ipaja, Lagos",
+    lat: 6.6173097,
+    lng: 3.2973386,
     portrait: "/figma/campus-ipaja.jpg",
     image: "/figma/asset-18.jpg",
     verse: "Now to him who is able to do immeasurably more than all we ask or imagine.",
@@ -133,6 +145,8 @@ export const campuses: Campus[] = [
     timezone: "Europe/London",
     address: availability("London gathering location"),
     place: "London, United Kingdom",
+    lat: 51.5074456,
+    lng: -0.1277653,
     portrait: "/figma/campus-uk-64c435.jpg",
     image: "/figma/asset-21.jpg",
     verse: "Let the message of Christ dwell among you richly.",
@@ -141,23 +155,25 @@ export const campuses: Campus[] = [
     match: ["london", "uk", "united kingdom", "england"],
   },
   {
-    slug: "yaba",
-    name: "Zoe Household Yaba",
-    shortName: "Yaba",
-    city: "Yaba",
+    slug: "ifako",
+    name: "Zoe Household Ifako",
+    shortName: "Ifako",
+    city: "Ifako",
     region: "Nigeria",
     country: "Nigeria",
     timezone: "Africa/Lagos",
     address: "Unilag Guest House, Akoka Rd, Abule Ijesha, Lagos",
     phone: "+234 903 740 1755",
     pastor: "Somto Umeizuegbu",
-    place: "Yaba, Lagos",
+    place: "Ifako, Lagos",
+    lat: 6.5218196,
+    lng: 3.398947,
     portrait: "/figma/campus-yaba.jpg",
     image: "/figma/asset-19.jpg",
     verse: "In him was life, and that life was the light of all mankind.",
     verseRef: "John 1:4",
     services: [{ name: "Sunday Gathering", schedule: availability("Service time"), address: "Unilag Guest House, Akoka Rd, Abule Ijesha, Lagos" }],
-    match: ["yaba", "unilag", "akoka", "surulere"],
+    match: ["ifako", "ifako-ijaiye", "yaba", "unilag", "akoka", "surulere", "gbagada"],
   },
 ];
 
@@ -219,6 +235,8 @@ export const routes = [
   "/give/campus",
   "/give/global",
   ...campuses.map((campus) => `/give/${campus.slug}`),
+  "/privacy",
+  "/terms",
 ] as const;
 
 export const socialLinks = {

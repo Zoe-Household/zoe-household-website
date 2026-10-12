@@ -1,13 +1,75 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
+import { createContext, FormEvent, ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarButton, FormCard, Modal } from "@/components/Interactive";
 import { NationsMap } from "@/components/NationsMap";
 import { TeachingLibrary, YoutubeImage } from "@/components/TeachingLibrary";
 import { Arrow } from "@/components/SiteChrome";
 import { beliefs, Campus, campuses, pastorDolapoBio, socialLinks } from "@/data/site";
 import type { LibraryVideo } from "@/lib/library";
+import { EMPTY_CONTENT, fallbackEvents, fallbackMoments, type EventItem, type SiteContent } from "@/lib/site-content";
+
+type MergedCampus = Campus & {
+  gallery?: string[];
+  email?: string;
+  instagram?: string;
+  whatToExpect?: string;
+  gettingThere?: string;
+  parking?: string;
+  languages?: string;
+};
+
+type ResolvedContent = {
+  campusesOrdered: MergedCampus[];
+  bySlug: Map<string, MergedCampus>;
+  events: EventItem[];
+  moments: string[];
+};
+
+const ContentContext = createContext<ResolvedContent | null>(null);
+
+function useSite(): ResolvedContent {
+  const value = useContext(ContentContext);
+  if (!value) throw new Error("Site content is not available outside <Prototype>.");
+  return value;
+}
+
+function resolveContent(content: SiteContent): ResolvedContent {
+  const overrides = content.campus ?? {};
+  const merged: MergedCampus[] = campuses.map((base) => {
+    const o = overrides[base.slug];
+    if (!o) return base;
+    return {
+      ...base,
+      place: o.place ?? base.place,
+      pastor: o.pastor ?? base.pastor,
+      phone: o.phone ?? base.phone,
+      email: o.email,
+      instagram: o.instagram,
+      address: o.address ?? base.address,
+      verse: o.verse ?? base.verse,
+      verseRef: o.verseRef ?? base.verseRef,
+      whatToExpect: o.whatToExpect,
+      gettingThere: o.gettingThere,
+      parking: o.parking,
+      languages: o.languages,
+      image: o.heroImage ?? base.image,
+      services: o.services && o.services.length ? o.services : base.services,
+      gallery: o.gallery,
+    };
+  });
+  const bySlug = new Map(merged.map((campus) => [campus.slug, campus]));
+  const campusesOrdered = campusOrder
+    .map((slug) => bySlug.get(slug))
+    .filter((campus): campus is MergedCampus => Boolean(campus));
+  return {
+    campusesOrdered,
+    bySlug,
+    events: content.events ?? fallbackEvents,
+    moments: content.moments ?? fallbackMoments,
+  };
+}
 
 function PlayIcon() {
   return <svg className="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5-11-6.5Z" fill="currentColor" /></svg>;
@@ -102,10 +164,7 @@ function Accordion({ items, initial = 0, numbered = false }: { items: readonly (
   </div>;
 }
 
-const campusOrder = ["atlanta", "abeokuta", "houston", "ikeja", "ipaja", "london", "yaba"];
-const orderedCampuses = campusOrder
-  .map((slug) => campuses.find((campus) => campus.slug === slug))
-  .filter((campus): campus is Campus => Boolean(campus));
+const campusOrder = ["atlanta", "abeokuta", "houston", "ikeja", "ipaja", "london", "ifako"];
 
 function campusTitle(campus: Campus) {
   return campus.slug === "london" ? "UK" : campus.shortName;
@@ -137,33 +196,26 @@ function CampusCard({ campus }: { campus: Campus }) {
 }
 
 function CampusGrid() {
+  const { campusesOrdered } = useSite();
   return <div className="campus-grid">
-    {orderedCampuses.map((campus) => <CampusCard campus={campus} key={campus.slug} />)}
+    {campusesOrdered.map((campus) => <CampusCard campus={campus} key={campus.slug} />)}
   </div>;
 }
 
-type EventCardData = { slug: string; type: string; title: string; date: string; location: string; image: string; body: string; live?: boolean };
-
-const eventCards: EventCardData[] = [
-  { slug: "ignite", type: "Global Gathering", title: "Ignite 2026", date: "Oct 12 – 15, 2026", location: "Atlanta, GA", image: "/figma/asset-08.jpg", body: "A global gathering held every year at Zoe Household. Four days of intense teaching, worship, and fellowship.", live: true },
-  { slug: "camp-meeting", type: "Retreat", title: "Camp Meeting", date: "Dates to be announced", location: "Location to be announced", image: "/figma/asset-13-724bec.jpg", body: "Unhurried days of formation, fellowship, and encounter — time to sit deeply with Scripture and pray together." },
-  { slug: "still-waters", type: "Conference", title: "Still Waters", date: "Dates to be announced", location: "Location to be announced", image: "/figma/prayer-hero-793934.jpg", body: "A restorative gathering for quiet, clarity, and the presence of God. Rest and renewal found in Christ." },
-];
-
-function EventCard({ event, onVolunteer }: { event: EventCardData; onVolunteer?: () => void }) {
+function EventCard({ event, onVolunteer }: { event: EventItem; onVolunteer?: () => void }) {
   return <article className="event-card">
     <div className="event-card-media">
       <img src={event.image} alt="" loading="lazy" />
       {event.live ? <span className="badge is-live">Happening now</span> : null}
     </div>
     <div className="event-card-body">
-      <span className="badge">{event.type}</span>
+      <span className="badge">{event.kind}</span>
       <h3>{event.title}</h3>
       <ul className="meta-list">
         <li><PinIcon />{event.location}</li>
-        <li><CalendarIcon />{event.date}</li>
+        <li><CalendarIcon />{event.dateLabel}</li>
       </ul>
-      <p>{event.body}</p>
+      <p>{event.summary}</p>
       <div className="event-card-foot">
         <Link className="link-arrow" href={`/events/${event.slug}`}>{event.live ? "Register" : "See full details"} <Arrow /></Link>
         {onVolunteer ? <button className="link-arrow is-muted" type="button" onClick={onVolunteer}>Volunteer <Arrow /></button> : null}
@@ -244,6 +296,8 @@ function PlanSteps({ campus, onOpen }: { campus: Campus; onOpen: (kind: "childre
 }
 
 function HomePage() {
+  const { events } = useSite();
+  const globalEvents = events.filter((event) => !event.campusSlug);
   return <>
     <section className="page-hero hero-home">
       <div className="page-hero-media" aria-hidden="true">
@@ -329,7 +383,7 @@ function HomePage() {
           action={<Link className="link-arrow" href="/events">All events <Arrow /></Link>}
         />
         <div className="event-grid">
-          {eventCards.map((event) => <EventCard event={event} key={event.slug} />)}
+          {globalEvents.map((event) => <EventCard event={event} key={event.slug} />)}
         </div>
       </div>
     </section>
@@ -653,7 +707,17 @@ function nextSundayLabel() {
   return `${day} · 9:00 AM (your local time)`;
 }
 
-function OnlineGathering() {
+const FAR_THRESHOLD_KM = 80.47; // 50 miles
+
+function formatDistance(kilometers: number) {
+  const miles = kilometers * 0.621371;
+  if (kilometers < 1) return "Less than a mile away";
+  const shown = miles < 10 ? miles.toFixed(1) : Math.round(miles).toLocaleString("en-US");
+  const km = kilometers < 10 ? kilometers.toFixed(1) : Math.round(kilometers).toLocaleString("en-US");
+  return `About ${km} km · ${shown} miles away`;
+}
+
+function OnlineGathering({ variant = "none" }: { variant?: "none" | "far" }) {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -679,12 +743,15 @@ function OnlineGathering() {
     <div className="container online-grid">
       <div>
         <Label>Zoe online</Label>
-        <h2>Your Nearest Campus Is a Little <span className="hl">Farther Away</span></h2>
-        <p>We couldn&apos;t find a Zoe campus within roughly three hours of the address you entered. You can still join us through our online gathering.</p>
+        <h2>{variant === "far" ? <>That Campus Is More Than <span className="hl">50 Miles Away</span></> : <>Join the Household <span className="hl">Online</span></>}</h2>
+        <p>{variant === "far"
+          ? "The closest campus is shown above, but it's a bit of a journey. You're just as welcome to gather with us online and stream the service live."
+          : "We couldn't place a campus from that search. You're still welcome to gather with us online and stream the service live."}</p>
         <div className="live-card">
           <span className="live-dot" aria-hidden="true" />
           <div><strong>Next live gathering</strong><p>{nextSundayLabel()}</p></div>
         </div>
+        <a className="btn btn-glass" href={socialLinks.youtube} target="_blank" rel="noreferrer"><PlayIcon /> Watch on YouTube</a>
       </div>
       {sent ? <div className="form-panel is-sent" role="status"><h3>You&apos;re on the list</h3><p>We&apos;ll remind you before the next gathering.</p></div> : (
         <form className="form-panel" onSubmit={remind}>
@@ -703,50 +770,120 @@ function OnlineGathering() {
 }
 
 function VisitPage() {
-  const atlanta = campuses.find((campus) => campus.slug === "atlanta") ?? campuses[0];
+  const { bySlug, campusesOrdered } = useSite();
+  const atlanta = bySlug.get("atlanta") ?? campusesOrdered[0];
   const [address, setAddress] = useState("");
-  const [result, setResult] = useState<Campus | "online" | null>(null);
+  const [result, setResult] = useState<{ campus: MergedCampus; kilometers: number | null } | "online" | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState<"children" | "visit" | null>(null);
+
+  const showCampus = async (params: URLSearchParams) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/campus-near?${params.toString()}`);
+      const data = await response.json() as { slug?: string; kilometers?: number | null; error?: string };
+      if (response.status === 404) {
+        setResult("online");
+      } else if (!response.ok || !data.slug) {
+        throw new Error(data.error ?? "We couldn't find a campus from that search.");
+      } else {
+        const campus = bySlug.get(data.slug);
+        if (!campus) throw new Error("We couldn't find a campus from that search.");
+        setResult({ campus, kilometers: data.kilometers ?? null });
+      }
+      window.setTimeout(() => document.getElementById("visit-result")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+    } catch (problem) {
+      setResult(null);
+      setError(problem instanceof Error ? problem.message : "We couldn't find a campus from that search.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const search = (event: FormEvent) => {
     event.preventDefault();
-    const query = address.toLowerCase();
-    const match = campuses.find((campus) => campus.match.some((term) => query.includes(term)));
-    setResult(match ?? "online");
-    window.setTimeout(() => document.getElementById("visit-result")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+    const query = address.trim();
+    if (query.length < 2) return;
+    void showCampus(new URLSearchParams({ q: query }));
   };
+
+  const locate = (auto = false) => {
+    if (!navigator.geolocation) {
+      if (!auto) setError("This browser can't share your location. Enter a city or address instead.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        void showCampus(new URLSearchParams({
+          lat: String(position.coords.latitude),
+          lng: String(position.coords.longitude),
+        }));
+      },
+      () => {
+        setLoading(false);
+        // On auto-detect we stay quiet and let the visitor search manually.
+        if (!auto) setError("Location access was blocked. Enter a city or address instead.");
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
+    );
+  };
+
+  // When a visitor lands on the Campus page, try to show their nearest campus
+  // automatically. If permission is blocked/unavailable we silently fall back
+  // to the manual finder below.
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (autoRan.current) return;
+    autoRan.current = true;
+    locate(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return <>
-    <PageHero label="Visit" title="Find Your Campus" body="Enter your address and we'll help you find the closest Zoe campus within roughly a three-hour drive." image="/figma/visit-hero.jpg">
+    <PageHero label="Visit" title="Find Your Campus" body="Enter a city or address, or use your location. We'll show the closest Zoe campus, and you can join online as well." image="/figma/visit-hero.jpg">
       <form id="visit-finder" className="finder" onSubmit={search}>
         <label className="search-field">
           <PinIcon />
           <input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Where are you coming from?" aria-label="Where are you coming from" required />
         </label>
-        <button className="btn btn-primary" type="submit">Find My Campus <Arrow /></button>
+        <button className="btn btn-primary" type="submit" disabled={loading}>{loading ? "Finding…" : "Find My Campus"} <Arrow /></button>
       </form>
-      <small className="hero-note">Your address is only used to help find the nearest campus.</small>
+      <small className="hero-note">Your location is only used to find the nearest campus. <button className="note-button" type="button" onClick={() => locate()} disabled={loading}>Use my current location</button></small>
     </PageHero>
 
     <div id="visit-result">
-      {result === "online" ? <OnlineGathering /> : null}
-      {result && result !== "online" ? <section className="section found is-raised">
-        <div className="container">
-          <article className="found-card">
-            <img src={result.image} alt="" />
-            <div>
-              <Label>We found a campus for you</Label>
-              <h2>Zoe {campusTitle(result)}</h2>
-              <ul className="meta-list">
-                <li><PinIcon />{hasKnownAddress(result) ? result.address : result.place}</li>
-                <li><ClockIcon />{isPending(result.services[0].schedule) ? "Service time to be announced" : result.services[0].schedule}</li>
-              </ul>
-              <div className="actions">
-                <Link className="btn btn-primary" href={`/visit/${result.slug}`}>Plan Your Visit <Arrow /></Link>
-                <button className="btn btn-glass" type="button" onClick={() => setResult(null)}>Search again</button>
-              </div>
+      {error ? <section className="section"><div className="container"><p className="form-error" role="alert">{error}</p></div></section> : null}
+      {result && result !== "online" ? (() => {
+        const far = result.kilometers != null && result.kilometers > FAR_THRESHOLD_KM;
+        return <>
+          <section className="section found is-raised">
+            <div className="container">
+              <article className="found-card">
+                <img src={result.campus.image} alt="" />
+                <div>
+                  <Label>Closest campus</Label>
+                  <h2>Zoe {campusTitle(result.campus)}</h2>
+                  <ul className="meta-list">
+                    <li><PinIcon />{hasKnownAddress(result.campus) ? result.campus.address : result.campus.place}</li>
+                    <li><ClockIcon />{isPending(result.campus.services[0].schedule) ? "Service time to be announced" : result.campus.services[0].schedule}</li>
+                    {result.kilometers != null ? <li><PinIcon />{formatDistance(result.kilometers)}</li> : null}
+                  </ul>
+                  <div className="actions">
+                    <Link className="btn btn-primary" href={`/visit/${result.campus.slug}`}>Plan Your Visit <Arrow /></Link>
+                    <button className="btn btn-glass" type="button" onClick={() => setResult(null)}>Search again</button>
+                  </div>
+                </div>
+              </article>
             </div>
-          </article>
-        </div>
-      </section> : null}
+          </section>
+          {far ? <OnlineGathering variant="far" /> : null}
+        </>;
+      })() : null}
+      {result === "online" ? <OnlineGathering variant="none" /> : null}
     </div>
 
     <section className="section campuses is-paper">
@@ -768,13 +905,15 @@ function VisitPage() {
   </>;
 }
 
-function CampusPage({ campus }: { campus: Campus }) {
+function CampusPage({ campus }: { campus: MergedCampus }) {
+  const { campusesOrdered } = useSite();
   const [modal, setModal] = useState<"children" | "visit" | "reminder" | null>(null);
   const known = hasKnownAddress(campus);
   const maps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(campus.address)}`;
   const embed = `https://www.google.com/maps?q=${encodeURIComponent(campus.address)}&output=embed`;
   const first = campus.services[0];
-  const others = orderedCampuses.filter((item) => item.slug !== campus.slug);
+  const others = campusesOrdered.filter((item) => item.slug !== campus.slug);
+  const gallery = campus.gallery ?? [];
   const title = campusTitle(campus);
 
   return <div className="campus-page" key={campus.slug}>
@@ -820,6 +959,36 @@ function CampusPage({ campus }: { campus: Campus }) {
         <small>A word to carry with us throughout the month.</small>
       </div>
     </section>
+
+    {(campus.whatToExpect || campus.gettingThere || campus.parking || campus.languages || campus.email || campus.instagram) ? (
+      <section className="section campus-know">
+        <div className="container">
+          <SectionHead label="Good to know" title={<>Your First Visit to <span className="hl">Zoe {title}</span></>} body={campus.whatToExpect ?? undefined} />
+          <dl className="campus-facts">
+            {campus.languages ? <div><dt><UserIcon />Service language</dt><dd>{campus.languages}</dd></div> : null}
+            {campus.parking ? <div><dt><PinIcon />Parking</dt><dd>{campus.parking}</dd></div> : null}
+            {campus.gettingThere ? <div><dt><PinIcon />Getting there</dt><dd>{campus.gettingThere}</dd></div> : null}
+            {campus.email ? <div><dt><UserIcon />Email</dt><dd><a href={`mailto:${campus.email}`}>{campus.email}</a></dd></div> : null}
+            {campus.instagram ? <div><dt><UserIcon />Instagram</dt><dd><a href={campus.instagram} target="_blank" rel="noreferrer">Follow this campus</a></dd></div> : null}
+          </dl>
+        </div>
+      </section>
+    ) : null}
+
+    {gallery.length ? (
+      <section className="section campus-gallery">
+        <div className="container">
+          <SectionHead label="Moments" title={<>Life at <span className="hl">Zoe {title}</span></>} body="Snapshots from our gatherings and community." />
+          <div className="moment-grid">
+            {gallery.map((src, index) => (
+              <figure className="moment-tile" key={`${src}-${index}`}>
+                <img src={src} alt="" loading="lazy" />
+              </figure>
+            ))}
+          </div>
+        </div>
+      </section>
+    ) : null}
 
     <section className="section campus-gather is-raised">
       <div className="container">
@@ -1096,12 +1265,12 @@ function PneumaPage() {
   </>;
 }
 
-const momentPhotos = ["asset-15.jpg", "asset-16.jpg", "asset-17.jpg", "asset-18.jpg", "pneuma-hero-1c7cfc.jpg", "about-hero.jpg", "asset-19.jpg", "asset-20.jpg", "arrows-atlanta.jpg", "asset-21.jpg", "asset-22.jpg", "asset-23-615969.jpg", "asset-14-41c41a.jpg", "visit-hero.jpg", "asset-08.jpg"];
-
 function EventsPage() {
+  const { events, moments } = useSite();
+  const globalEvents = events.filter((event) => !event.campusSlug);
   const [more, setMore] = useState(false);
   const [volunteer, setVolunteer] = useState(false);
-  const photos = more ? momentPhotos : momentPhotos.slice(0, 10);
+  const photos = more ? moments : moments.slice(0, 10);
   return <>
     <PageHero label="Zoe events" title="Gather With Purpose" body="From major gatherings to teaching moments across our campuses, Zoe events give us opportunities to come together, grow in Christ, and share life as one household." image="/figma/asset-03-102235.jpg">
       <div className="actions is-center">
@@ -1158,7 +1327,7 @@ function EventsPage() {
       <div className="container">
         <SectionHead label="Throughout the year" title={<>Our Global <span className="hl">Gatherings</span></>} body="Throughout the year, we gather in different ways and at different places. We'd be glad to have you." />
         <div className="event-grid">
-          {eventCards.map((event) => <EventCard event={event} key={event.slug} onVolunteer={() => setVolunteer(true)} />)}
+          {globalEvents.map((event) => <EventCard event={event} key={event.slug} onVolunteer={() => setVolunteer(true)} />)}
         </div>
       </div>
     </section>
@@ -1166,8 +1335,12 @@ function EventsPage() {
     <section className="section moments">
       <div className="container">
         <SectionHead center label="Moments" title={<>There&apos;s More <span className="hl">to Experience</span></>} body="From worship nights to gatherings across our campuses, these moments remind us what happens when we come together." />
-        <div className="moments-grid">
-          {photos.map((file) => <img key={file} src={`/figma/${file}`} alt="" loading="lazy" />)}
+        <div className="moment-grid">
+          {photos.map((file, index) => (
+            <figure className="moment-tile" key={`${file}-${index}`}>
+              <img src={file} alt="" loading="lazy" />
+            </figure>
+          ))}
         </div>
         <div className="actions is-center">
           <button className="btn btn-glass" type="button" onClick={() => setMore((value) => !value)}>{more ? "Show fewer moments" : "See more moments"} <Arrow /></button>
@@ -1179,41 +1352,13 @@ function EventsPage() {
   </>;
 }
 
-const eventDetails: Record<string, { title: string; eyebrow: string; intro: string; body: string; image: string; when: string; where: string }> = {
-  ignite: {
-    title: "Ignite",
-    eyebrow: "Annual global gathering",
-    intro: "A defining gathering for worship, the Word, prayer, and fresh fire.",
-    body: "Ignite brings the global household together to behold Jesus, receive the Word, and return to our cities strengthened for the life and work God has entrusted to us.",
-    image: "/figma/asset-08.jpg",
-    when: "Oct 12 – 15, 2026",
-    where: "Atlanta, GA",
-  },
-  "camp-meeting": {
-    title: "Camp Meeting",
-    eyebrow: "A household set apart",
-    intro: "Unhurried days of formation, fellowship, and encounter.",
-    body: "Camp Meeting creates room for the household to withdraw from the ordinary rhythm, sit deeply with Scripture, pray together, and build lasting relationships across campuses.",
-    image: "/figma/asset-13-724bec.jpg",
-    when: "Dates to be announced",
-    where: "Location to be announced",
-  },
-  "still-waters": {
-    title: "Still Waters",
-    eyebrow: "Rest · Reflection · Renewal",
-    intro: "A restorative gathering for quiet, clarity, and the presence of God.",
-    body: "Still Waters is an invitation to slow down, attend to the soul, and receive the rest and renewal found in Christ.",
-    image: "/figma/prayer-hero-793934.jpg",
-    when: "Dates to be announced",
-    where: "Location to be announced",
-  },
-};
-
 function EventDetailPage({ slug }: { slug: string }) {
-  const event = eventDetails[slug];
+  const { events } = useSite();
+  const event = events.find((item) => item.slug === slug);
   const [volunteer, setVolunteer] = useState(false);
+  if (!event) return <NotFoundPage />;
   return <>
-    <PageHero label={event.eyebrow} title={event.title} body={event.intro} image={event.image} />
+    <PageHero label={event.kind} title={event.title} body={event.intro} image={event.image} />
     <section className="section">
       <div className="container detail-grid">
         <div>
@@ -1224,11 +1369,17 @@ function EventDetailPage({ slug }: { slug: string }) {
         <aside className="info-card">
           <h3>Next gathering</h3>
           <ul className="meta-list">
-            <li><CalendarIcon />{event.when}</li>
-            <li><PinIcon />{event.where}</li>
+            <li><CalendarIcon />{event.dateLabel}</li>
+            <li><PinIcon />{event.location}</li>
           </ul>
-          <p>Registration details are shared by the Zoe events team. Reach out and we&apos;ll keep you posted.</p>
-          <button className="btn btn-primary btn-block" type="button" onClick={() => setVolunteer(true)}>Get Event Updates <Arrow /></button>
+          {event.registerUrl ? <>
+            <p>Secure your place for this gathering.</p>
+            <a className="btn btn-primary btn-block" href={event.registerUrl} target="_blank" rel="noreferrer">Register / Details <Arrow /></a>
+            <button className="btn btn-glass btn-block" type="button" onClick={() => setVolunteer(true)}>Get Event Updates</button>
+          </> : <>
+            <p>Registration details are shared by the Zoe events team. Reach out and we&apos;ll keep you posted.</p>
+            <button className="btn btn-primary btn-block" type="button" onClick={() => setVolunteer(true)}>Get Event Updates <Arrow /></button>
+          </>}
         </aside>
       </div>
     </section>
@@ -1502,7 +1653,7 @@ function PrayerPage() {
 }
 
 const tithelyUrl = "https://give.tithe.ly/?formId=38e44ec6-bbde-428c-b073-df0309a7e479&context=modal";
-const giveOrder = ["ikeja", "london", "yaba", "ipaja", "abeokuta", "atlanta", "houston"];
+const giveOrder = ["ikeja", "london", "ifako", "ipaja", "abeokuta", "atlanta", "houston"];
 
 function giveLabel(slug: string) {
   if (slug === "london") return "United Kingdom";
@@ -1607,6 +1758,169 @@ function GivePage({ path }: { path: string }) {
   </>;
 }
 
+const LEGAL_UPDATED = "October 12, 2026";
+const PRIVACY_EMAIL = "privacy@zoehousehold.org";
+const CONTACT_EMAIL = "hello@zoehousehold.org";
+
+function LegalPage({ title, lead, children }: { title: string; lead: string; children: ReactNode }) {
+  return <>
+    <PageHero label="Zoe Household" title={title} body={lead} image="/figma/about-hero.jpg" />
+    <section className="section">
+      <div className="container narrow">
+        <div className="legal">
+          <p className="legal-meta">Last updated: {LEGAL_UPDATED}</p>
+          {children}
+        </div>
+      </div>
+    </section>
+  </>;
+}
+
+function LegalSection({ heading, children }: { heading: string; children: ReactNode }) {
+  return <section className="legal-section">
+    <h2>{heading}</h2>
+    {children}
+  </section>;
+}
+
+function PrivacyPage() {
+  return <LegalPage
+    title="Privacy Policy"
+    lead="How Zoe Household collects, uses, and protects the information you share with us."
+  >
+    <LegalSection heading="Overview">
+      <p>Zoe Household (&ldquo;Zoe,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;) is a global household of believers with campuses across Nigeria, the United States, and the United Kingdom. This Privacy Policy explains what information we collect through this website, how we use it, and the choices you have. We are committed to handling your information with care, respect, and integrity.</p>
+      <p>By using this website or submitting information through its forms, you agree to the practices described in this policy.</p>
+    </LegalSection>
+
+    <LegalSection heading="Information We Collect">
+      <p><strong>Information you give us.</strong> When you plan a visit, pre-register a child for Zoe Arrows, request service reminders, connect online, submit a prayer request, or send us a general inquiry, we collect the details you choose to provide. This may include:</p>
+      <ul>
+        <li><strong>Contact details</strong> — your name, email address, and phone number.</li>
+        <li><strong>Visit and family details</strong> — the campus you plan to attend and, for children&apos;s check-in, the information a parent or guardian chooses to share.</li>
+        <li><strong>Prayer requests and messages</strong> — the content you include when you reach out to a prayer team or send a note.</li>
+        <li><strong>Giving information</strong> — when you give, payments are processed by third-party providers or by bank transfer. We do not collect or store full card or bank account numbers on this website.</li>
+      </ul>
+      <p><strong>Information collected automatically.</strong> Like most websites, our hosting and infrastructure providers log basic technical data such as IP address, browser and device type, and the pages visited. This is used to keep the site secure, reliable, and performing well.</p>
+    </LegalSection>
+
+    <LegalSection heading="How We Use Your Information">
+      <ul>
+        <li>To respond to your requests and welcome you when you plan a visit.</li>
+        <li>To route prayer requests carefully to the appropriate prayer team.</li>
+        <li>To send the service reminders or online connection details you ask for.</li>
+        <li>To support children&apos;s ministry check-in where a parent or guardian has provided information.</li>
+        <li>To process and acknowledge giving through our giving partners.</li>
+        <li>To maintain, protect, and improve the website.</li>
+      </ul>
+      <p>We only use the information for the purpose you shared it for, and we treat prayer requests and family details as sensitive and confidential.</p>
+    </LegalSection>
+
+    <LegalSection heading="How We Share Information">
+      <p>We do not sell your personal information, and we do not share it for anyone else&apos;s marketing. We share information only in these limited cases:</p>
+      <ul>
+        <li><strong>Service providers</strong> who help us operate the site and ministry, including our website host (Vercel), email delivery (Resend), content management (Sanity), and our giving provider (Tithely). These providers process information on our behalf and are expected to protect it.</li>
+        <li><strong>Embedded services</strong> such as Google Maps and YouTube, which may receive limited data when their content loads on a page, under their own privacy policies.</li>
+        <li><strong>Legal reasons</strong>, where disclosure is reasonably necessary to comply with the law or protect the rights, safety, and property of our community.</li>
+      </ul>
+    </LegalSection>
+
+    <LegalSection heading="Children&apos;s Information">
+      <p>Information about children is provided by a parent or guardian for the purpose of children&apos;s ministry check-in and care. We collect only what is needed, keep it limited, and do not use it for any other purpose.</p>
+    </LegalSection>
+
+    <LegalSection heading="Data Retention">
+      <p>We keep your information only as long as needed to fulfil the purpose you shared it for, to maintain appropriate ministry records, or as required by applicable law. When it is no longer needed, we take reasonable steps to delete or anonymise it.</p>
+    </LegalSection>
+
+    <LegalSection heading="Your Choices and Rights">
+      <p>Depending on where you live, you may have the right to access, correct, or delete the personal information we hold about you, to withdraw consent, or to object to certain uses. You can unsubscribe from reminder emails at any time using the link in those emails. To make a request, contact us using the details below and we will respond within a reasonable time.</p>
+    </LegalSection>
+
+    <LegalSection heading="Cookies and Similar Technologies">
+      <p>This website uses only essential cookies and local storage needed for core functionality. Embedded content such as maps and videos may set their own cookies when you interact with them, governed by the policies of those services.</p>
+    </LegalSection>
+
+    <LegalSection heading="Security">
+      <p>We use reasonable technical and organisational measures to protect your information, including encrypted connections for data in transit. However, no method of transmission or storage is completely secure, and we cannot guarantee absolute security.</p>
+    </LegalSection>
+
+    <LegalSection heading="International Transfers">
+      <p>Because Zoe Household serves a global community and uses international service providers, your information may be processed in countries other than your own. Where this happens, we take steps to ensure your information remains protected.</p>
+    </LegalSection>
+
+    <LegalSection heading="Changes to This Policy">
+      <p>We may update this Privacy Policy from time to time. When we do, we will revise the &ldquo;last updated&rdquo; date above. Continued use of the website after changes means you accept the updated policy.</p>
+    </LegalSection>
+
+    <LegalSection heading="Contact Us">
+      <div className="legal-contact">
+        <p>For privacy questions or to make a data request, contact us at <a href={`mailto:${PRIVACY_EMAIL}`}>{PRIVACY_EMAIL}</a>. You can also reach us through the inquiry form on our <Link href="/about/faqs">FAQs page</Link>.</p>
+      </div>
+    </LegalSection>
+  </LegalPage>;
+}
+
+function TermsPage() {
+  return <LegalPage
+    title="Terms of Use"
+    lead="The terms that govern your use of the Zoe Household website."
+  >
+    <LegalSection heading="Acceptance of These Terms">
+      <p>Welcome to the Zoe Household website. By accessing or using this site, you agree to these Terms of Use and our <Link href="/privacy">Privacy Policy</Link>. If you do not agree, please do not use the site.</p>
+    </LegalSection>
+
+    <LegalSection heading="About This Website">
+      <p>This website is operated by Zoe Household Global to share who we are, help you find and connect with a campus, access teaching and resources, and support the life of our community. Information on the site is provided for general and ministry purposes.</p>
+    </LegalSection>
+
+    <LegalSection heading="Using the Site">
+      <p>You agree to use the website lawfully and respectfully. You may not:</p>
+      <ul>
+        <li>Use the site for any unlawful purpose or in violation of any applicable law.</li>
+        <li>Attempt to gain unauthorised access to the site, its systems, or other users&apos; data.</li>
+        <li>Upload or transmit viruses, malicious code, or anything intended to disrupt the site.</li>
+        <li>Harass, abuse, impersonate, or harm another person through the site&apos;s forms.</li>
+        <li>Submit content that is unlawful, misleading, or that infringes the rights of others.</li>
+      </ul>
+    </LegalSection>
+
+    <LegalSection heading="Information You Submit">
+      <p>When you submit a prayer request, visitor details, children&apos;s check-in information, or a message, you confirm that the information is accurate and that you have the right to share it. You give us permission to use that information for the purpose it was provided, as described in our <Link href="/privacy">Privacy Policy</Link>. Please do not submit sensitive information beyond what is needed.</p>
+    </LegalSection>
+
+    <LegalSection heading="Giving and Donations">
+      <p>Giving through this website is processed by third-party providers or by bank transfer. Gifts are generally considered freely given and non-refundable. If you believe a giving error has occurred, please contact us promptly and we will do our best to help.</p>
+    </LegalSection>
+
+    <LegalSection heading="Intellectual Property">
+      <p>Unless otherwise noted, the content on this site — including text, logos, images, sermons, music, and design — belongs to Zoe Household or its licensors and is protected by applicable laws. You may view and share content for personal, non-commercial purposes. You may not reproduce, distribute, or use it commercially without permission.</p>
+    </LegalSection>
+
+    <LegalSection heading="Third-Party Links and Services">
+      <p>The site links to and embeds third-party services such as YouTube, Spotify, the Bible App, Substack, Google Maps, Tithely, and ChurchOS. We do not control these services and are not responsible for their content, availability, or practices. Your use of them is governed by their own terms and privacy policies.</p>
+    </LegalSection>
+
+    <LegalSection heading="Disclaimers">
+      <p>The website and its content are provided &ldquo;as is&rdquo; and &ldquo;as available,&rdquo; without warranties of any kind, whether express or implied. While we strive to keep information accurate and the site available, we do not guarantee that it will always be uninterrupted, error-free, or current.</p>
+    </LegalSection>
+
+    <LegalSection heading="Limitation of Liability">
+      <p>To the fullest extent permitted by law, Zoe Household and those serving with it will not be liable for any indirect, incidental, or consequential loss arising from your use of, or inability to use, the website or the services linked from it.</p>
+    </LegalSection>
+
+    <LegalSection heading="Changes to the Site and These Terms">
+      <p>We may update, change, or discontinue parts of the website at any time, and we may revise these Terms of Use from time to time. When we do, we will update the &ldquo;last updated&rdquo; date above. Continued use of the site after changes means you accept the updated terms.</p>
+    </LegalSection>
+
+    <LegalSection heading="Contact Us">
+      <div className="legal-contact">
+        <p>Questions about these Terms? Contact us at <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> or through the inquiry form on our <Link href="/about/faqs">FAQs page</Link>.</p>
+      </div>
+    </LegalSection>
+  </LegalPage>;
+}
+
 function NotFoundPage() {
   return <section className="page-hero not-found">
     <div className="container page-hero-copy">
@@ -1618,14 +1932,15 @@ function NotFoundPage() {
   </section>;
 }
 
-export function Prototype({ path }: { path: string }) {
+function Router({ path }: { path: string }) {
+  const { bySlug, events } = useSite();
   if (path === "/") return <HomePage />;
   if (path === "/about") return <AboutPage />;
   if (path === "/about/beliefs") return <BeliefsPage />;
   if (path === "/about/faqs") return <FaqPage />;
   if (path === "/visit") return <VisitPage />;
   if (path.startsWith("/visit/")) {
-    const campus = campuses.find((item) => item.slug === path.split("/")[2]);
+    const campus = bySlug.get(path.split("/")[2]);
     return campus ? <CampusPage campus={campus} /> : <NotFoundPage />;
   }
   if (path === "/sermons") return <SermonsPage />;
@@ -1633,11 +1948,22 @@ export function Prototype({ path }: { path: string }) {
   if (path === "/events") return <EventsPage />;
   if (path.startsWith("/events/")) {
     const slug = path.split("/")[2];
-    return eventDetails[slug] ? <EventDetailPage slug={slug} /> : <NotFoundPage />;
+    return events.some((event) => event.slug === slug) ? <EventDetailPage slug={slug} /> : <NotFoundPage />;
   }
   if (path === "/resources") return <ResourcesPage />;
   if (path === "/resources/scholarship") return <ScholarshipPage />;
   if (path === "/prayer") return <PrayerPage />;
   if (path === "/give" || path.startsWith("/give/")) return <GivePage path={path} />;
+  if (path === "/privacy") return <PrivacyPage />;
+  if (path === "/terms") return <TermsPage />;
   return <NotFoundPage />;
+}
+
+export function Prototype({ path, content = EMPTY_CONTENT }: { path: string; content?: SiteContent }) {
+  const resolved = useMemo(() => resolveContent(content), [content]);
+  return (
+    <ContentContext.Provider value={resolved}>
+      <Router path={path} />
+    </ContentContext.Provider>
+  );
 }

@@ -24,7 +24,7 @@ type NavGroup = { label: string; href: string; children: readonly (readonly [str
 
 const groups: NavGroup[] = [
   { label: "About", href: "/about", children: [["Who We Are", "/about"], ["What We Believe", "/about/beliefs"], ["FAQs", "/about/faqs"]] },
-  { label: "Visit", href: "/visit", children: [["Find a Campus", "/visit"], ...campuses.map((campus) => [`Zoe ${campus.shortName}`, `/visit/${campus.slug}`] as const)] },
+  { label: "Campus", href: "/visit", children: [["Nearest Campus", "/visit"], ...campuses.map((campus) => [`Zoe ${campus.shortName}`, `/visit/${campus.slug}`] as const)] },
   { label: "Watch & Listen", href: "/sermons", children: [["Sermons & Podcast", "/sermons"], ["Pneuma Worship", "/pneuma-worship"]] },
 ];
 
@@ -191,7 +191,7 @@ export function SiteChrome({ children }: { children: ReactNode }) {
             <div className="footer-col">
               <p>Explore</p>
               <Link href="/">Home</Link>
-              <Link href="/visit">Visit</Link>
+              <Link href="/visit">Campus</Link>
               <Link href="/events">Events</Link>
               <Link href="/prayer">Prayer</Link>
               <Link href="/give">Give</Link>
@@ -216,7 +216,7 @@ export function SiteChrome({ children }: { children: ReactNode }) {
           </div>
           <div className="footer-bottom">
             <span>© <LocalYear /> Zoe Household. All rights reserved.</span>
-            <span><Link href="/about/faqs">Privacy Policy</Link><Link href="/about/faqs">Terms of Use</Link></span>
+            <span><Link href="/privacy">Privacy Policy</Link><Link href="/terms">Terms of Use</Link></span>
           </div>
         </div>
 
