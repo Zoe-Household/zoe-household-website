@@ -20,14 +20,36 @@ export function SocialIcon({ name }: { name: IconName }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 1 1-2.01-2.77V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 1 0 15.86 15.67v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4c-.36 0-.71-.03-1.04-.1Z" /></svg>;
 }
 
-const nav = [
-  { label: "About", href: "/about", children: [["Who We Are", "/about"], ["What We Believe", "/about/beliefs"], ["FAQs", "/about/faqs"]] },
-  { label: "Visit", href: "/visit", children: campuses.map((campus) => [campus.shortName, `/visit/${campus.slug}`]) },
-  { label: "Watch & Listen", href: "/sermons", children: [["Sermons", "/sermons"], ["Pneuma Worship", "/pneuma-worship"]] },
-] as const;
+type NavGroup = { label: string; href: string; children: readonly (readonly [string, string])[] };
 
-function DesktopMenu({ item, active }: { item: (typeof nav)[number]; active: boolean }) {
-  const ref = useRef<HTMLDivElement>(null);
+const groups: NavGroup[] = [
+  { label: "About", href: "/about", children: [["Who We Are", "/about"], ["What We Believe", "/about/beliefs"], ["FAQs", "/about/faqs"]] },
+  { label: "Visit", href: "/visit", children: [["Find a Campus", "/visit"], ...campuses.map((campus) => [`Zoe ${campus.shortName}`, `/visit/${campus.slug}`] as const)] },
+  { label: "Watch & Listen", href: "/sermons", children: [["Sermons & Podcast", "/sermons"], ["Pneuma Worship", "/pneuma-worship"]] },
+];
+
+const links = [
+  { label: "Events", href: "/events" },
+  { label: "Resources", href: "/resources" },
+  { label: "Prayer", href: "/prayer" },
+];
+
+function isActive(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
+  if (href === "/sermons") return pathname.startsWith("/sermons") || pathname.startsWith("/pneuma");
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export function Arrow({ className = "" }: { className?: string }) {
+  return <svg className={`icon-arrow ${className}`} viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function Chevron() {
+  return <svg className="icon-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function DesktopMenu({ group, active }: { group: NavGroup; active: boolean }) {
+  const ref = useRef<HTMLLIElement>(null);
   const [open, setOpen] = useState(false);
 
   const close = () => {
@@ -36,8 +58,8 @@ function DesktopMenu({ item, active }: { item: (typeof nav)[number]; active: boo
     if (focused instanceof HTMLElement && ref.current?.contains(focused)) focused.blur();
   };
 
-  return <div
-    className={`desktop-nav-group${open ? " is-open" : ""}`}
+  return <li
+    className={`nav-item has-menu${open ? " is-open" : ""}`}
     ref={ref}
     onMouseEnter={() => setOpen(true)}
     onMouseLeave={close}
@@ -46,13 +68,15 @@ function DesktopMenu({ item, active }: { item: (typeof nav)[number]; active: boo
       if (!ref.current?.contains(event.relatedTarget as Node | null)) setOpen(false);
     }}
   >
-    <Link className={active ? "is-active" : ""} href={item.href}>{item.label}</Link>
-    <div className="desktop-dropdown">
-      <div>
-        {item.children.map(([label, href]) => <Link key={href} href={href} onClick={close}>{label}</Link>)}
+    <Link className={`nav-link${active ? " is-active" : ""}`} href={group.href} aria-haspopup="true" aria-expanded={open}>
+      {group.label}<Chevron />
+    </Link>
+    <div className="nav-menu">
+      <div className={`nav-menu-inner${group.children.length > 4 ? " is-wide" : ""}`}>
+        {group.children.map(([label, href]) => <Link key={href} href={href} onClick={close}>{label}</Link>)}
       </div>
     </div>
-  </div>;
+  </li>;
 }
 
 function LocalYear() {
@@ -66,35 +90,24 @@ function LocalYear() {
 
 export function SiteChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const onHome = pathname === "/";
   const [open, setOpen] = useState(false);
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const shellRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const node = shellRef.current;
-    if (!node) return;
-    let frame = 0;
-    const onScroll = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const start = window.innerHeight * 0.22;
-        const distance = window.innerHeight * 0.55;
-        const progress = Math.min(1, Math.max(0, (window.scrollY - start) / distance));
-        node.style.setProperty("--nav-shade", progress.toFixed(3));
-      });
-    };
+    const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", onScroll);
-    };
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    setOpen(false);
+    setExpanded(null);
   }, [pathname]);
 
   useEffect(() => {
     document.body.classList.toggle("menu-open", open);
-    if (open) closeRef.current?.focus();
     const onKey = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", onKey);
     return () => {
@@ -105,84 +118,112 @@ export function SiteChrome({ children }: { children: ReactNode }) {
 
   const close = () => setOpen(false);
 
-  return <div className="site-shell" ref={shellRef}>
+  return <div className="site-shell">
     <a className="skip-link" href="#main-content">Skip to content</a>
 
-    <header className={`desktop-header ${onHome ? "is-home" : ""}`}>
-      <Link className="desktop-brand" href="/" aria-label="Zoe Household home">
-        <img src="/figma/logo.png" alt="" />
-      </Link>
-      <nav className="desktop-nav" aria-label="Primary navigation">
-        <Link className={onHome ? "is-active" : ""} href="/">Home</Link>
-        {nav.map((item) => <DesktopMenu key={item.label} item={item} active={pathname.startsWith(item.href) || (item.label === "Watch & Listen" && pathname.startsWith("/pneuma"))} />)}
-        <Link className={pathname.startsWith("/events") ? "is-active" : ""} href="/events">Events</Link>
-        <Link className={pathname.startsWith("/resources") ? "is-active" : ""} href="/resources">Resources</Link>
-        <Link className={pathname.startsWith("/prayer") ? "is-active" : ""} href="/prayer">Prayer</Link>
-        <Link className={`desktop-give${pathname.startsWith("/give") ? " is-active" : ""}`} href="/give">Give</Link>
-      </nav>
-    </header>
-
-    <header className={`mobile-header${onHome ? " is-home" : ""}`}>
-      <Link className="mobile-wordmark" href="/" aria-label="Zoe Household home">zoe</Link>
-      <Link className="mobile-give" href="/give">Give</Link>
-    </header>
-
-    <aside className={`mobile-drawer ${open ? "is-open" : ""}`} aria-hidden={!open}>
-      <div className="mobile-drawer-inner">
-        <div className="mobile-drawer-top">
-          <span>zoe.</span>
-          <button ref={closeRef} type="button" onClick={close} aria-label="Close navigation">Close</button>
-        </div>
-        <nav aria-label="Mobile navigation">
-          <Link onClick={close} href="/">Home</Link>
-          <Link onClick={close} href="/about">About</Link>
-          <Link onClick={close} href="/visit"><em>Visit</em></Link>
-          <Link onClick={close} href="/sermons">Watch &amp; Listen</Link>
-          <Link onClick={close} href="/events">Events</Link>
-          <Link onClick={close} href="/resources"><em>Resources</em></Link>
-          <Link onClick={close} href="/prayer">Prayer</Link>
-          <Link onClick={close} href="/give">Give</Link>
+    <header className={`site-header${scrolled || open ? " is-scrolled" : ""}`}>
+      <div className="site-header-inner">
+        <nav className="nav-pill" aria-label="Primary navigation">
+          <Link className="nav-brand" href="/" aria-label="Zoe Household home">
+            <img src="/figma/zoe-logo-white.png" alt="" width={240} height={209} />
+          </Link>
+          <ul className="nav-list">
+            <li className="nav-item"><Link className={`nav-link${isActive(pathname, "/") ? " is-active" : ""}`} href="/">Home</Link></li>
+            {groups.map((group) => <DesktopMenu key={group.label} group={group} active={isActive(pathname, group.href)} />)}
+            {links.map((link) => <li className="nav-item" key={link.href}><Link className={`nav-link${isActive(pathname, link.href) ? " is-active" : ""}`} href={link.href}>{link.label}</Link></li>)}
+          </ul>
+          <Link className={`btn btn-primary nav-give${isActive(pathname, "/give") ? " is-active" : ""}`} href="/give">Give</Link>
+          <button className={`nav-toggle${open ? " is-open" : ""}`} type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-controls="mobile-menu" aria-label={open ? "Close menu" : "Open menu"}>
+            <span /><span /><span />
+          </button>
         </nav>
-      </div>
-    </aside>
 
-    <button className={`mobile-fab ${open ? "is-open" : ""}`} type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-label={open ? "Close site navigation" : "Open site navigation"}>
-      <span />
-      <span />
-      <span />
-    </button>
+        <div id="mobile-menu" className={`mobile-menu${open ? " is-open" : ""}`} aria-hidden={!open}>
+          <div className="mobile-menu-inner">
+            <ul>
+              <li><Link className={isActive(pathname, "/") ? "is-active" : ""} href="/" onClick={close} tabIndex={open ? 0 : -1}>Home</Link></li>
+              {groups.map((group) => {
+                const isOpen = expanded === group.label;
+                return <li key={group.label} className={isOpen ? "is-expanded" : ""}>
+                  <div className="mobile-menu-row">
+                    <Link className={isActive(pathname, group.href) ? "is-active" : ""} href={group.href} onClick={close} tabIndex={open ? 0 : -1}>{group.label}</Link>
+                    <button type="button" onClick={() => setExpanded(isOpen ? null : group.label)} aria-expanded={isOpen} aria-label={`${isOpen ? "Hide" : "Show"} ${group.label} pages`} tabIndex={open ? 0 : -1}><Chevron /></button>
+                  </div>
+                  <div className="mobile-submenu">
+                    <div>
+                      {group.children.map(([label, href]) => <Link key={href} href={href} onClick={close} tabIndex={open && isOpen ? 0 : -1}>{label}</Link>)}
+                    </div>
+                  </div>
+                </li>;
+              })}
+              {links.map((link) => <li key={link.href}><Link className={isActive(pathname, link.href) ? "is-active" : ""} href={link.href} onClick={close} tabIndex={open ? 0 : -1}>{link.label}</Link></li>)}
+            </ul>
+            <Link className="btn btn-primary btn-block" href="/give" onClick={close} tabIndex={open ? 0 : -1}>Give</Link>
+          </div>
+        </div>
+      </div>
+    </header>
+    <button className={`menu-scrim${open ? " is-open" : ""}`} type="button" aria-hidden="true" tabIndex={-1} onClick={close} />
 
     <main id="main-content">{children}</main>
 
-    <footer className={`fig-footer ${onHome ? "is-home" : "is-page"}`}>
-      <div className="fig-footer-panel">
-        <div className="fig-member">
+    <footer className="site-footer">
+      <div className="site-footer-inner">
+        <div className="footer-member">
           <div>
-            <strong>Member login</strong>
-            <p>Already part of the household? Access your ChurchOS account, stay connected, and manage your member information.</p>
+            <p className="label">Member login</p>
+            <h2>Already part of the household?</h2>
+            <p>Access your ChurchOS account, stay connected, and manage your member information.</p>
           </div>
-          <a className="fig-btn fig-btn-lime" href="https://churchos.faith/" target="_blank" rel="noreferrer">ChurchOS Login</a>
+          <a className="btn btn-primary" href="https://churchos.faith/" target="_blank" rel="noreferrer">ChurchOS Login <Arrow /></a>
         </div>
-        <div className="fig-footer-grid">
-          <div className="fig-footer-brand">
-            <strong>ZOE HOUSEHOLD</strong>
-            <em>The life of God.</em>
-            <p>A global household of people discovering, living, and revealing the life of God in Christ.</p>
-            <div className="footer-socials" aria-label="Zoe Household social links">
-              {(Object.keys(socialLinks) as IconName[]).map((name) => <a key={name} href={socialLinks[name]} target="_blank" rel="noreferrer" aria-label={name}><SocialIcon name={name} /></a>)}
+
+        <div className="footer-panel">
+          <div className="footer-grid">
+            <div className="footer-brand">
+              <img src="/figma/zoe-logo-white.png" alt="Zoe Household" width={240} height={209} />
+              <strong>The life of God.</strong>
+              <p>A global household of people discovering, living, and revealing the life of God in Christ.</p>
+              <div className="footer-socials" aria-label="Zoe Household social links">
+                {(Object.keys(socialLinks) as IconName[]).map((name) => <a key={name} href={socialLinks[name]} target="_blank" rel="noreferrer" aria-label={name}><SocialIcon name={name} /></a>)}
+              </div>
+            </div>
+            <div className="footer-col">
+              <p>Explore</p>
+              <Link href="/">Home</Link>
+              <Link href="/visit">Visit</Link>
+              <Link href="/events">Events</Link>
+              <Link href="/prayer">Prayer</Link>
+              <Link href="/give">Give</Link>
+            </div>
+            <div className="footer-col">
+              <p>About</p>
+              <Link href="/about">Who We Are</Link>
+              <Link href="/about/beliefs">What We Believe</Link>
+              <Link href="/about/faqs">FAQs</Link>
+            </div>
+            <div className="footer-col">
+              <p>Campuses</p>
+              {campuses.map((campus) => <Link key={campus.slug} href={`/visit/${campus.slug}`}>Zoe {campus.shortName}</Link>)}
+            </div>
+            <div className="footer-col">
+              <p>Grow</p>
+              <Link href="/sermons">Sermons &amp; Podcast</Link>
+              <Link href="/pneuma-worship">Pneuma Worship</Link>
+              <Link href="/resources">Devotionals</Link>
+              <Link href="/resources/scholarship">Zoe Scholarship</Link>
             </div>
           </div>
-          <div><p className="fig-foot-label">Explore</p><Link href="/">Home</Link><Link href="/about">About</Link><Link href="/visit">Visit</Link><Link href="/sermons">Watch & Listen</Link><Link href="/events">Events</Link><Link href="/resources">Resources</Link><Link href="/prayer">Prayer</Link><Link href="/give">Give</Link></div>
-          <div><p className="fig-foot-label">About</p><Link href="/about">Who We Are</Link><Link href="/about/beliefs">What We Believe</Link><Link href="/about/faqs">FAQs</Link></div>
-          <div><p className="fig-foot-label">Watch & Listen</p><Link href="/sermons">Sermons</Link><Link href="/pneuma-worship">Pneuma Worship</Link></div>
-          <div><p className="fig-foot-label">Resources</p><Link href="/resources">Devotionals</Link><Link href="/resources/scholarship">Zoe Scholarship</Link></div>
+          <div className="footer-bottom">
+            <span>© <LocalYear /> Zoe Household. All rights reserved.</span>
+            <span><Link href="/about/faqs">Privacy Policy</Link><Link href="/about/faqs">Terms of Use</Link></span>
+          </div>
         </div>
-        <div className="fig-footer-bottom">
-          <span>© <LocalYear /> Zoe Household. All rights reserved.</span>
-          <span><Link href="/about/faqs">Privacy Policy</Link><Link href="/about/faqs">Terms of Use</Link></span>
-        </div>
+
+        <svg className="footer-wordmark" viewBox="0 0 1000 132" role="img" aria-label="Zoe Household">
+          <text x="500" y="112" textAnchor="middle" textLength="1000" lengthAdjust="spacingAndGlyphs">ZOE HOUSEHOLD</text>
+        </svg>
       </div>
-      <p className="fig-footer-mark">ZOE HOUSEHOLD</p>
     </footer>
   </div>;
 }

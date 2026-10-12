@@ -14,6 +14,9 @@ export type Campus = {
   timezone: string;
   address: string;
   phone?: string;
+  pastor?: string;
+  place: string;
+  portrait: string;
   image: string;
   verse: string;
   verseRef: string;
@@ -33,7 +36,10 @@ export const campuses: Campus[] = [
     country: "Nigeria",
     timezone: "Africa/Lagos",
     address: "Continental Suites, Ibara, Abeokuta",
-    image: "/figma/asset-20.png",
+    pastor: "Ola Akinosi",
+    place: "Abeokuta, Nigeria",
+    portrait: "/figma/campus-abeokuta-7f776f.jpg",
+    image: "/figma/asset-20.jpg",
     verse: "You make known to me the path of life; in your presence there is fullness of joy.",
     verseRef: "Psalm 16:11",
     services: [{ name: "Sunday Gathering", schedule: availability("Service time"), address: "Continental Suites, Ibara, Abeokuta" }],
@@ -49,7 +55,10 @@ export const campuses: Campus[] = [
     timezone: "America/New_York",
     address: "6865 Factory Shoals Rd SW, Austell, GA 30168",
     phone: "+1 943-245-0356",
-    image: "/figma/asset-15.png",
+    pastor: "Temi Lawal",
+    place: "Atlanta, Georgia",
+    portrait: "/figma/campus-atlanta-42d4b1.jpg",
+    image: "/figma/visit-atlanta-hero-225203.jpg",
     verse: "I have come that they may have life, and have it to the full.",
     verseRef: "John 10:10",
     services: [
@@ -67,7 +76,10 @@ export const campuses: Campus[] = [
     country: "USA",
     timezone: "America/Chicago",
     address: "12658 Goar Rd, Houston, TX 77077",
-    image: "/figma/asset-16.png",
+    pastor: "Korede Megbope",
+    place: "Houston, Texas",
+    portrait: "/figma/campus-houston-2ae206.jpg",
+    image: "/figma/asset-16.jpg",
     verse: "The Spirit of him who raised Jesus from the dead is living in you.",
     verseRef: "Romans 8:11",
     services: [{ name: "Sunday Gathering", schedule: availability("Service time"), address: "12658 Goar Rd, Houston, TX 77077" }],
@@ -83,7 +95,10 @@ export const campuses: Campus[] = [
     timezone: "Africa/Lagos",
     address: "1 Lola Holloway, Omole Phase 1, Lagos",
     phone: "+234 816 266 5803",
-    image: "/figma/asset-17.png",
+    pastor: "Michael Mosaku",
+    place: "Ikeja, Lagos",
+    portrait: "/figma/campus-ikeja.jpg",
+    image: "/figma/asset-17.jpg",
     verse: "If anyone is in Christ, the new creation has come.",
     verseRef: "2 Corinthians 5:17",
     services: [{ name: "Sunday Gathering", schedule: availability("Service time"), address: "1 Lola Holloway, Omole Phase 1, Lagos" }],
@@ -99,7 +114,10 @@ export const campuses: Campus[] = [
     timezone: "Africa/Lagos",
     address: "TGC Hall, 3B A Close, off Kokomo Road, Iyana-Ipaja",
     phone: "+234 704 142 3847",
-    image: "/figma/asset-18.png",
+    pastor: "Emmanuel Adeola",
+    place: "Ipaja, Lagos",
+    portrait: "/figma/campus-ipaja.jpg",
+    image: "/figma/asset-18.jpg",
     verse: "Now to him who is able to do immeasurably more than all we ask or imagine.",
     verseRef: "Ephesians 3:20",
     services: [{ name: "Sunday Gathering", schedule: availability("Service time"), address: "TGC Hall, 3B A Close, off Kokomo Road, Iyana-Ipaja" }],
@@ -114,7 +132,9 @@ export const campuses: Campus[] = [
     country: "UK",
     timezone: "Europe/London",
     address: availability("London gathering location"),
-    image: "/figma/asset-21.png",
+    place: "London, United Kingdom",
+    portrait: "/figma/campus-uk-64c435.jpg",
+    image: "/figma/asset-21.jpg",
     verse: "Let the message of Christ dwell among you richly.",
     verseRef: "Colossians 3:16",
     services: [{ name: "Sunday Gathering", schedule: availability("Service time"), address: availability("London gathering location") }],
@@ -130,7 +150,10 @@ export const campuses: Campus[] = [
     timezone: "Africa/Lagos",
     address: "Unilag Guest House, Akoka Rd, Abule Ijesha, Lagos",
     phone: "+234 903 740 1755",
-    image: "/figma/asset-19.png",
+    pastor: "Somto Umeizuegbu",
+    place: "Yaba, Lagos",
+    portrait: "/figma/campus-yaba.jpg",
+    image: "/figma/asset-19.jpg",
     verse: "In him was life, and that life was the light of all mankind.",
     verseRef: "John 1:4",
     services: [{ name: "Sunday Gathering", schedule: availability("Service time"), address: "Unilag Guest House, Akoka Rd, Abule Ijesha, Lagos" }],

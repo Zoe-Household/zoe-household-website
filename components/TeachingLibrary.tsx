@@ -40,7 +40,7 @@ function youtubeFrames(id: string) {
   ];
 }
 
-function YoutubeImage({ id, alt }: { id: string; alt: string }) {
+export function YoutubeImage({ id, alt }: { id: string; alt: string }) {
   const frames = youtubeFrames(id);
   const [index, setIndex] = useState(0);
   const advance = () => setIndex((current) => Math.min(current + 1, frames.length - 1));
@@ -275,7 +275,8 @@ export function TeachingLibrary({ seed, seedKey }: { seed: string; seedKey: numb
         <>
           <div className="sermon-library-head">
             <div>
-              <h2>Latest Sermons</h2>
+              <p className="label">Watch</p>
+              <h2>Latest <span className="hl">Sermons</span></h2>
               <p>Grow through Bible-centered teachings that deepen your faith and inspire Christ-centered living.</p>
             </div>
             <form className="sermon-search" onSubmit={searchSermons}>
@@ -297,8 +298,11 @@ export function TeachingLibrary({ seed, seedKey }: { seed: string; seedKey: numb
             <button type="button" className="library-feature" onClick={() => setPlayingId(featured.id)} aria-label={featured.title}>
               <YoutubeImage id={featured.id} alt="" />
               <span>
+                <small>Featured message</small>
                 <strong>{featured.title}</strong>
+                <em>Watch now{featured.duration ? ` · ${featured.duration}` : ""}</em>
               </span>
+              <i className="library-feature-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5-11-6.5Z" fill="currentColor" /></svg></i>
             </button>
           ) : null}
 
@@ -320,7 +324,8 @@ export function TeachingLibrary({ seed, seedKey }: { seed: string; seedKey: numb
         <>
           <div className="sermon-library-head">
             <div>
-              <h2>Podcast</h2>
+              <p className="label">Listen</p>
+              <h2>The <span className="hl">Podcast</span></h2>
               <p>Whether you are commuting, working, or spending quiet time with God, the Pastor Dolapo Lawal podcast brings biblical teaching straight to you.</p>
             </div>
             <form className="sermon-search" onSubmit={searchPodcasts}>

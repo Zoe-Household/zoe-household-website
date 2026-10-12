@@ -1,58 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { FormEvent, ReactNode, useMemo, useRef, useState } from "react";
-import { Campus, campuses, sermons } from "@/data/site";
-
-export function HeroVideo() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [soundOn, setSoundOn] = useState(false);
-
-  const toggleSound = async () => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.muted = soundOn;
-    if (!soundOn) await video.play().catch(() => undefined);
-    setSoundOn(!soundOn);
-  };
-
-  return <section className="home-hero">
-    <video ref={videoRef} className="home-hero-video" autoPlay muted loop playsInline poster="/assets/zoe-hero.png">
-      <source src="/assets/zoe-hero-video.m4v" type="video/mp4" />
-    </video>
-    <div className="home-hero-overlay" />
-    <div className="home-hero-content">
-      <h1>zoe</h1>
-      <div className="definition-line">
-        <span>[zoh-ee]</span>
-        <button type="button" onClick={toggleSound} aria-label={soundOn ? "Mute hero video" : "Play hero video sound"} aria-pressed={soundOn}>
-          <span className={`sound-glyph ${soundOn ? "on" : ""}`} aria-hidden="true">◖</span>
-        </button>
-        <span>Greek</span>
-        <span>noun</span>
-      </div>
-      <p className="outline-definition">THE LIFE<br />OF GOD.</p>
-      <div className="hero-actions">
-        <Link className="button button-light" href="/visit">Plan Your Visit</Link>
-        <Link className="button button-outline-light" href="/sermons">Watch a Sermon</Link>
-      </div>
-    </div>
-  </section>;
-}
-
-export function Accordion({ items, className = "" }: { items: readonly (readonly [string, string, string?])[]; className?: string }) {
-  const [open, setOpen] = useState<number | null>(0);
-  return <div className={`accordion ${className}`}>
-    {items.map(([title, body, detail], index) => <article className="accordion-item" key={title}>
-      <h3>
-        <button type="button" onClick={() => setOpen(open === index ? null : index)} aria-expanded={open === index}>
-          <span>{title}</span><span aria-hidden="true">{open === index ? "−" : "+"}</span>
-        </button>
-      </h3>
-      {open === index && <div className="accordion-panel"><p>{body}</p>{detail && <small>{detail}</small>}</div>}
-    </article>)}
-  </div>;
-}
+import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
+import { Campus, campuses } from "@/data/site";
 
 type FormKind = "visit" | "children" | "reminder" | "online" | "prayer" | "inquiry";
 
@@ -191,6 +140,17 @@ export function FormCard({ kind, campus, onClose }: { kind: FormKind; campus?: C
 }
 
 export function Modal({ children, onClose }: { children: ReactNode; onClose: () => void }) {
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && closeRef.current();
+    document.addEventListener("keydown", onKey);
+    document.body.classList.add("modal-open");
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.classList.remove("modal-open");
+    };
+  }, []);
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && onClose()}>
     <div className="modal-card" role="dialog" aria-modal="true">{children}</div>
   </div>;
@@ -247,7 +207,7 @@ function zonedParts(timeZone: string, date: Date) {
 }
 
 function upcomingSunday(campus: Campus) {
-  const schedule = campus.slug === "atlanta" ? "Sunday, 10:00 AM" : campus.services[0]?.schedule ?? "";
+  const schedule = campus.services[0]?.schedule ?? "";
   const clock = serviceClock(schedule);
   const target = clock ?? { hour: 10, minute: 0 };
   const now = new Date();
@@ -324,101 +284,10 @@ function SaveVisitModal({ campus, onClose }: { campus: Campus; onClose: () => vo
   </div>;
 }
 
-export function CalendarButton({ campus }: { campus: Campus }) {
+export function CalendarButton({ campus, className = "button button-quiet", children = "Add to Calendar" }: { campus: Campus; className?: string; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
   return <>
-    <button className="button button-quiet" type="button" onClick={() => setOpen(true)}>Add to Calendar</button>
+    <button className={className} type="button" onClick={() => setOpen(true)}>{children}</button>
     {open && <Modal onClose={() => setOpen(false)}><SaveVisitModal campus={campus} onClose={() => setOpen(false)} /></Modal>}
   </>;
-}
-
-export function VisitorHub({ campus }: { campus: Campus }) {
-  const [modal, setModal] = useState<"visit" | "children" | "reminder" | null>(null);
-  return <section id="visitor-pathway" className="section visitor-hub">
-    <div className="section-heading">
-      <p className="eyebrow">Plan your visit</p>
-      <h2>Your first visit, made simple.</h2>
-      <p>Choose a step below to prepare for Sunday.</p>
-    </div>
-    <div className="visitor-hub-grid">
-      <article className="hub-card"><span>01</span><h3>What to expect</h3><p>Worship, prayer, the Word, family, and a warm welcome. Come as you are.</p></article>
-      <button className="hub-card" type="button" onClick={() => setModal("children")}><span>02</span><h3>Register children</h3><p>Pre-register for a simpler Zoe Arrows check-in.</p><b>Open form →</b></button>
-      <button className="hub-card" type="button" onClick={() => setModal("visit")}><span>03</span><h3>Let us know</h3><p>Tell the welcome team you are coming or ask for help before Sunday.</p><b>Open form →</b></button>
-      <article className="hub-card"><span>04</span><h3>Add to calendar</h3><p>Save the next Sunday gathering to your default calendar.</p><CalendarButton campus={campus} /></article>
-      <button className="hub-card wide" type="button" onClick={() => setModal("reminder")}><span>05</span><h3>Service reminders</h3><p>Join the {campus.shortName} email list for upcoming service reminders.</p><b>Join the list →</b></button>
-    </div>
-    {modal && <Modal onClose={() => setModal(null)}><FormCard kind={modal} campus={campus} onClose={() => setModal(null)} /></Modal>}
-  </section>;
-}
-
-export function CampusFinder() {
-  const [address, setAddress] = useState("");
-  const [result, setResult] = useState<Campus | "online" | null>(null);
-  const [onlineForm, setOnlineForm] = useState(false);
-  const search = (event: FormEvent) => {
-    event.preventDefault();
-    const query = address.toLowerCase();
-    const match = campuses.find((campus) => campus.match.some((term) => query.includes(term)));
-    setResult(match ?? "online");
-  };
-  return <div className="finder-shell">
-    <form className="finder-form" onSubmit={search}>
-      <label><span>Your address, city, or postcode</span><input value={address} onChange={(event) => setAddress(event.target.value)} required placeholder="Start typing your location" /></label>
-      <button className="button button-primary" type="submit">Find a Campus</button>
-    </form>
-    {result && result !== "online" && <div className="finder-result">
-      <p className="eyebrow">Recommended for you</p>
-      <h2>{result.name}</h2>
-      <p>{result.address}</p>
-      <div className="button-row"><Link className="button button-dark" href={`/visit/${result.slug}`}>Plan Your Visit</Link><a className="button button-quiet" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(result.address)}`} target="_blank" rel="noreferrer">Open Maps</a></div>
-    </div>}
-    {result === "online" && <div className="finder-result online-result">
-      <p className="eyebrow">A household without borders</p>
-      <h2>Join Zoe Online.</h2>
-      <p>Gather live with the household wherever you are.</p>
-      <div className="online-countdown" aria-label="Next online gathering"><span><strong>02</strong>days</span><span><strong>05</strong>hours</span><span><strong>31</strong>minutes</span></div>
-      <button className="button button-primary" type="button" onClick={() => setOnlineForm(true)}>Request Access</button>
-    </div>}
-    {onlineForm && <Modal onClose={() => setOnlineForm(false)}><FormCard kind="online" onClose={() => setOnlineForm(false)} /></Modal>}
-  </div>;
-}
-
-export function SermonLibrary() {
-  const tags = useMemo(() => ["All", ...Array.from(new Set(sermons.flatMap((sermon) => [sermon.topic, sermon.series])))], []);
-  const [tag, setTag] = useState("All");
-  const filtered = tag === "All" ? sermons : sermons.filter((sermon) => sermon.topic === tag || sermon.series === tag);
-  return <>
-    <div className="filter-chips" aria-label="Filter sermons">
-      {tags.map((item) => <button type="button" key={item} className={tag === item ? "active" : ""} onClick={() => setTag(item)}>{item}</button>)}
-    </div>
-    <div className="sermon-grid">
-      {filtered.map((sermon) => <a className="sermon-card" key={sermon.title} href="https://www.youtube.com/@PastorDolapoLawal" target="_blank" rel="noreferrer">
-        <div className="sermon-thumb"><span>▶</span></div>
-        <div><small>{sermon.topic} · {sermon.series}</small><h3>{sermon.title}</h3><p>Pastor Dolapo Lawal · {sermon.campus}</p></div>
-      </a>)}
-    </div>
-  </>;
-}
-
-export function GivingCard({ title, global = false, tithely = false }: { title: string; global?: boolean; tithely?: boolean }) {
-  const [flipped, setFlipped] = useState(false);
-  const methods = global ? ["CashApp", "Zelle", "PayPal", "Nigerian Bank", "US Bank"] : ["Bank transfer"];
-  return <article className={`giving-card ${flipped ? "flipped" : ""}`}>
-    <div className="giving-card-inner">
-      <div className={`giving-face giving-front ${global ? "global" : ""}`}>
-        <button className="flip-button" type="button" onClick={() => setFlipped(true)}>Give →</button>
-        <small>{global ? "Global giving" : "Campus giving"}</small>
-        <h3>{title}</h3>
-        <p>{global ? "Support the work of the household across every city." : "Support your local household."}</p>
-      </div>
-      <div className="giving-face giving-back">
-        <button className="flip-button" type="button" onClick={() => setFlipped(false)}>← Back</button>
-        <small>{tithely ? "Secure giving" : global ? "Global options" : "Transfer details"}</small>
-        <h3>{tithely ? "Give securely" : "Choose a method"}</h3>
-        {tithely
-          ? <a className="button button-primary" href="https://give.tithe.ly/?formId=38e44ec6-bbde-428c-b073-df0309a7e479&context=modal" target="_blank" rel="noreferrer">Continue to Tithely</a>
-          : <div className="payment-methods">{methods.map((method) => <div key={method}><span>{method}</span><strong>1234567890</strong></div>)}</div>}
-      </div>
-    </div>
-  </article>;
 }
