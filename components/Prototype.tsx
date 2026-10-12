@@ -364,7 +364,6 @@ function AboutPage() {
     </section>
 
     <section className="vision">
-      <img src="/figma/about-vision-51f746.jpg" alt="" loading="lazy" />
       <div className="container vision-grid">
         <article className="vision-card is-lemon">
           <Label>Vision</Label>
