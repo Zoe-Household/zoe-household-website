@@ -699,12 +699,61 @@ function FaqPage() {
   </>;
 }
 
-function nextSundayLabel() {
-  const date = new Date();
-  const days = (7 - date.getDay()) % 7 || 7;
-  date.setDate(date.getDate() + days);
-  const day = date.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
-  return `${day} · 9:00 AM (your local time)`;
+const LIVE_TIME_ZONE = "America/New_York";
+const LIVE_HOUR = 16;
+const LIVE_MINUTE = 0;
+
+function easternParts(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: LIVE_TIME_ZONE,
+    weekday: "short",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const read = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+  return {
+    weekday: read("weekday"),
+    year: Number(read("year")),
+    month: Number(read("month")),
+    day: Number(read("day")),
+    hour: Number(read("hour")),
+    minute: Number(read("minute")),
+  };
+}
+
+function atEastern(year: number, month: number, day: number, hour: number, minute: number) {
+  let utc = Date.UTC(year, month - 1, day, hour + 5, minute);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const seen = easternParts(new Date(utc));
+    const delta = (hour - seen.hour) * 60 + (minute - seen.minute);
+    const dayDrift = (year - seen.year) * 365 + (month - seen.month) * 31 + (day - seen.day);
+    if (delta === 0 && dayDrift === 0) break;
+    utc += (delta + dayDrift * 24 * 60) * 60 * 1000;
+  }
+  return new Date(utc);
+}
+
+function nextSundayLabel(now = new Date()) {
+  const today = easternParts(now);
+  const weekdayIndex = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(today.weekday);
+  let daysAhead = (7 - weekdayIndex) % 7;
+  if (daysAhead === 0 && today.hour * 60 + today.minute >= LIVE_HOUR * 60 + LIVE_MINUTE) daysAhead = 7;
+  const target = new Date(Date.UTC(today.year, today.month - 1, today.day + daysAhead));
+  const when = atEastern(target.getUTCFullYear(), target.getUTCMonth() + 1, target.getUTCDate(), LIVE_HOUR, LIVE_MINUTE);
+  const day = new Intl.DateTimeFormat("en-US", {
+    timeZone: LIVE_TIME_ZONE,
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  }).format(when);
+  const zone = new Intl.DateTimeFormat("en-US", { timeZone: LIVE_TIME_ZONE, timeZoneName: "short" })
+    .formatToParts(when)
+    .find((part) => part.type === "timeZoneName")?.value ?? "ET";
+  return `${day} · 4:00 PM Eastern Time (${zone})`;
 }
 
 const FAR_THRESHOLD_KM = 80.47; // 50 miles

@@ -241,7 +241,7 @@ export const routes = [
 
 export const socialLinks = {
   instagram: "https://www.instagram.com/zoehousehold_global/",
-  youtube: "https://www.youtube.com/@PastorDolapoLawal",
+  youtube: "https://www.youtube.com/@thezoehouseholdtv5",
   spotify: "https://open.spotify.com/artist/4mSJ0AM0ayxUboM1tvwiOs",
   tiktok: "https://www.tiktok.com/@zoe.household.atl",
 };

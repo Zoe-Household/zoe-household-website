@@ -173,9 +173,9 @@ export function SiteChrome({ children }: { children: ReactNode }) {
           <div>
             <p className="label">Member login</p>
             <h2>Already part of the household?</h2>
-            <p>Access your ChurchOS account, stay connected, and manage your member information.</p>
+            <p>Sign in with the email on your member account to stay connected and manage your information.</p>
           </div>
-          <a className="btn btn-primary" href="https://churchos.faith/" target="_blank" rel="noreferrer">ChurchOS Login <Arrow /></a>
+          <a className="btn btn-primary" href="https://churchq.io/login" target="_blank" rel="noreferrer">Sign in <Arrow /></a>
         </div>
 
         <div className="footer-panel">
