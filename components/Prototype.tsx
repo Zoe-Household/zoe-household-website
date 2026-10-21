@@ -139,13 +139,22 @@ function useVisitorLocation() {
   return point;
 }
 
-function useRankedEvents() {
+function useRankedEvents(campusSlug?: string) {
   const { events, generatedAt } = useSite();
   const now = useNow(generatedAt);
   const visitor = useVisitorLocation();
-  const globalEvents = useMemo(() => events.filter((event) => !event.campusSlug), [events]);
-  const ranked = useMemo(() => rankEvents(globalEvents, now, visitor), [globalEvents, now, visitor]);
-  return { ranked, now, located: visitor != null };
+  const scoped = useMemo(
+    () => (campusSlug ? events.filter((event) => event.campusSlug === campusSlug) : events),
+    [events, campusSlug],
+  );
+  const ranked = useMemo(() => rankEvents(scoped, now, visitor), [scoped, now, visitor]);
+  return { ranked, now, located: visitor != null && !campusSlug };
+}
+
+function eventCampusLabel(event: EventItem, bySlug: Map<string, MergedCampus>) {
+  if (!event.campusSlug) return "All campuses";
+  const campus = bySlug.get(event.campusSlug);
+  return campus ? `Zoe ${campus.shortName}` : event.campusSlug;
 }
 
 function PlayIcon() {
@@ -288,15 +297,16 @@ function EventBadges({ event, next = false }: { event: RankedEvent; next?: boole
   </div>;
 }
 
-function EventMeta({ event }: { event: RankedEvent }) {
+function EventMeta({ event, campusLabel }: { event: RankedEvent; campusLabel?: string }) {
   return <ul className="meta-list">
+    {campusLabel ? <li><UserIcon />{campusLabel}</li> : null}
     <li><CalendarIcon />{event.dateLabel}</li>
     <li><PinIcon />{event.location}</li>
     {event.kilometers != null && event.phase !== "past" ? <li className="is-distance"><PinIcon />{formatKilometers(event.kilometers)}</li> : null}
   </ul>;
 }
 
-function EventCard({ event, onVolunteer }: { event: RankedEvent; onVolunteer?: () => void }) {
+function EventCard({ event, onVolunteer, campusLabel }: { event: RankedEvent; onVolunteer?: () => void; campusLabel?: string }) {
   const past = event.phase === "past";
   return <article className={`event-card${past ? " is-past" : ""}`}>
     <div className="event-card-media">
@@ -306,7 +316,7 @@ function EventCard({ event, onVolunteer }: { event: RankedEvent; onVolunteer?: (
     <div className="event-card-body">
       <span className="badge">{event.kind}</span>
       <h3>{event.title}</h3>
-      <EventMeta event={event} />
+      <EventMeta event={event} campusLabel={campusLabel} />
       <p>{event.summary}</p>
       <div className="event-card-foot">
         <Link className="link-arrow" href={`/events/${event.slug}`}>{past ? "See what happened" : event.registerUrl ? "Register" : "See full details"} <Arrow /></Link>
@@ -316,7 +326,7 @@ function EventCard({ event, onVolunteer }: { event: RankedEvent; onVolunteer?: (
   </article>;
 }
 
-function FeaturedEvent({ event, now, onVolunteer }: { event: RankedEvent; now: number; onVolunteer?: () => void }) {
+function FeaturedEvent({ event, now, onVolunteer, campusLabel }: { event: RankedEvent; now: number; onVolunteer?: () => void; campusLabel?: string }) {
   const countdown = relativeLabel(event, now);
   return <article className="event-feature">
     <div className="event-feature-media">
@@ -327,7 +337,7 @@ function FeaturedEvent({ event, now, onVolunteer }: { event: RankedEvent; now: n
       <span className="badge">{event.kind}</span>
       <h3>{event.title}</h3>
       {countdown ? <span className="event-countdown"><ClockIcon />{countdown}</span> : null}
-      <EventMeta event={event} />
+      <EventMeta event={event} campusLabel={campusLabel} />
       {event.summary ? <p>{event.summary}</p> : null}
       <div className="actions">
         {event.registerUrl
@@ -344,16 +354,19 @@ function FeaturedEvent({ event, now, onVolunteer }: { event: RankedEvent; now: n
  * The next event for this visitor as a large card, followed by every other event:
  * upcoming soonest-first (nearby ones first), then past events, most recent first.
  */
-function EventsShowcase({ limit, onVolunteer }: { limit?: number; onVolunteer?: () => void }) {
-  const { ranked, now, located } = useRankedEvents();
+function EventsShowcase({ limit, onVolunteer, campusSlug, showCampus = false }: { limit?: number; onVolunteer?: () => void; campusSlug?: string; showCampus?: boolean }) {
+  const { bySlug } = useSite();
+  const { ranked, now, located } = useRankedEvents(campusSlug);
+  const labelFor = (event: RankedEvent) => (showCampus ? eventCampusLabel(event, bySlug) : undefined);
   const featured = ranked[0] && ranked[0].phase !== "past" ? ranked[0] : null;
   const rest = (featured ? ranked.slice(1) : ranked).slice(0, limit);
   const anyNearby = ranked.some((event) => event.nearby && event.phase !== "past");
+  if (!ranked.length) return null;
   return <>
     {located && anyNearby ? <p className="events-note">Events near you are shown first.</p> : null}
-    {featured ? <FeaturedEvent event={featured} now={now} onVolunteer={onVolunteer} /> : null}
+    {featured ? <FeaturedEvent event={featured} now={now} onVolunteer={onVolunteer} campusLabel={labelFor(featured)} /> : null}
     {rest.length ? <div className="event-grid">
-      {rest.map((event) => <EventCard event={event} key={event.slug} onVolunteer={onVolunteer} />)}
+      {rest.map((event) => <EventCard event={event} key={event.slug} onVolunteer={onVolunteer} campusLabel={labelFor(event)} />)}
     </div> : null}
   </>;
 }
@@ -514,7 +527,7 @@ function HomePage() {
           body="Join us for powerful moments of worship, teaching, and fellowship. We'd love to see you at one of our upcoming gatherings."
           action={<Link className="link-arrow" href="/events">All events <Arrow /></Link>}
         />
-        <EventsShowcase limit={6} />
+        <EventsShowcase limit={6} showCampus />
       </div>
     </section>
 
@@ -1085,6 +1098,17 @@ function VisitPage() {
   </>;
 }
 
+function CampusEvents({ campus, title }: { campus: MergedCampus; title: string }) {
+  const { events } = useSite();
+  if (!events.some((event) => event.campusSlug === campus.slug)) return null;
+  return <section className="section campus-events">
+    <div className="container">
+      <SectionHead label="Events" title={<>What's Happening at <span className="hl">Zoe {title}</span></>} body="Only gatherings assigned to this campus. The next one is first, then the rest from upcoming to past." />
+      <EventsShowcase campusSlug={campus.slug} />
+    </div>
+  </section>;
+}
+
 function CampusPage({ campus }: { campus: MergedCampus }) {
   const { campusesOrdered } = useSite();
   const [modal, setModal] = useState<"children" | "visit" | "reminder" | null>(null);
@@ -1154,6 +1178,8 @@ function CampusPage({ campus }: { campus: MergedCampus }) {
         </div>
       </section>
     ) : null}
+
+    <CampusEvents campus={campus} title={title} />
 
     {gallery.length ? (
       <section className="section campus-gallery">
@@ -1459,8 +1485,8 @@ function EventsPage() {
 
     <section id="events" className="section is-raised">
       <div className="container">
-        <SectionHead label="Throughout the year" title={<>Our Global <span className="hl">Gatherings</span></>} body="The next gathering is first, followed by everything coming up and the gatherings we've already shared together." />
-        <EventsShowcase onVolunteer={() => setVolunteer(true)} />
+        <SectionHead label="Throughout the year" title={<>Our Global <span className="hl">Gatherings</span></>} body="Every gathering, with its campus on the card. Events that aren't tied to one campus are for the whole household. The next one is first, then upcoming, then past." />
+        <EventsShowcase showCampus onVolunteer={() => setVolunteer(true)} />
       </div>
     </section>
 
@@ -1507,7 +1533,7 @@ function EventsPage() {
 }
 
 function EventDetailPage({ slug }: { slug: string }) {
-  const { events, generatedAt } = useSite();
+  const { events, generatedAt, bySlug } = useSite();
   const event = events.find((item) => item.slug === slug);
   const [volunteer, setVolunteer] = useState(false);
   const now = useNow(generatedAt);
@@ -1526,6 +1552,7 @@ function EventDetailPage({ slug }: { slug: string }) {
         <aside className="info-card">
           <h3>{heading}</h3>
           <ul className="meta-list">
+            <li><UserIcon />{eventCampusLabel(event, bySlug)}</li>
             <li><CalendarIcon />{event.dateLabel}</li>
             <li><PinIcon />{event.location}</li>
           </ul>
