@@ -7,7 +7,9 @@ import { NationsMap } from "@/components/NationsMap";
 import { TeachingLibrary, YoutubeImage } from "@/components/TeachingLibrary";
 import { Arrow } from "@/components/SiteChrome";
 import { beliefs, Campus, campuses, pastorDolapoBio, socialLinks } from "@/data/site";
+import { eventPhase, formatKilometers, rankEvents, relativeLabel, type RankedEvent } from "@/lib/event-order";
 import type { LibraryVideo } from "@/lib/library";
+import type { Point } from "@/lib/nearest-campus";
 import { EMPTY_CONTENT, fallbackEvents, fallbackMoments, type EventItem, type SiteContent } from "@/lib/site-content";
 
 type MergedCampus = Campus & {
@@ -25,6 +27,7 @@ type ResolvedContent = {
   bySlug: Map<string, MergedCampus>;
   events: EventItem[];
   moments: string[];
+  generatedAt: number;
 };
 
 const ContentContext = createContext<ResolvedContent | null>(null);
@@ -68,7 +71,81 @@ function resolveContent(content: SiteContent): ResolvedContent {
     bySlug,
     events: content.events ?? fallbackEvents,
     moments: content.moments ?? fallbackMoments,
+    generatedAt: content.generatedAt ?? 0,
   };
+}
+
+/** Current time, refreshed every minute so event cards roll over as events start and end. */
+function useNow(initial: number) {
+  const [now, setNow] = useState(initial);
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    tick();
+    const timer = window.setInterval(tick, 60_000);
+    const onVisible = () => document.visibilityState === "visible" && tick();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+  return now;
+}
+
+const VISITOR_KEY = "zoe:visitor-location";
+const IP_KEY = "zoe:ip-location";
+const VISITOR_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+function rememberVisitorLocation(point: Point) {
+  try {
+    window.localStorage.setItem(VISITOR_KEY, JSON.stringify({ ...point, at: Date.now() }));
+  } catch {
+    // Storage can be unavailable (private mode); ranking just falls back to IP location.
+  }
+}
+
+/**
+ * Where the visitor is, without prompting: a location they already shared on the
+ * Campus page (kept for 30 days), otherwise an approximate IP-based location.
+ */
+function useVisitorLocation() {
+  const [point, setPoint] = useState<Point | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(VISITOR_KEY) ?? "null") as (Point & { at?: number }) | null;
+      if (saved && Number.isFinite(saved.lat) && Number.isFinite(saved.lng) && Date.now() - (saved.at ?? 0) < VISITOR_MAX_AGE_MS) {
+        setPoint({ lat: saved.lat, lng: saved.lng });
+        return;
+      }
+      const cached = window.sessionStorage.getItem(IP_KEY);
+      if (cached) {
+        setPoint(JSON.parse(cached) as Point | null);
+        return;
+      }
+    } catch {
+      // Fall through to the network lookup.
+    }
+    fetch("/api/locate")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: (Point & { source?: string }) | null) => {
+        const found = data && Number.isFinite(data.lat) && Number.isFinite(data.lng) ? { lat: data.lat, lng: data.lng } : null;
+        try { window.sessionStorage.setItem(IP_KEY, JSON.stringify(found)); } catch { /* ignore */ }
+        if (!cancelled) setPoint(found);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
+  return point;
+}
+
+function useRankedEvents() {
+  const { events, generatedAt } = useSite();
+  const now = useNow(generatedAt);
+  const visitor = useVisitorLocation();
+  const globalEvents = useMemo(() => events.filter((event) => !event.campusSlug), [events]);
+  const ranked = useMemo(() => rankEvents(globalEvents, now, visitor), [globalEvents, now, visitor]);
+  return { ranked, now, located: visitor != null };
 }
 
 function PlayIcon() {
@@ -202,26 +279,83 @@ function CampusGrid() {
   </div>;
 }
 
-function EventCard({ event, onVolunteer }: { event: EventItem; onVolunteer?: () => void }) {
-  return <article className="event-card">
+function EventBadges({ event, next = false }: { event: RankedEvent; next?: boolean }) {
+  return <div className="event-card-badges">
+    {event.phase === "live" ? <span className="badge is-live">Happening now</span> : null}
+    {next && event.phase !== "live" ? <span className="badge is-next">Next up</span> : null}
+    {event.nearby && event.phase !== "past" ? <span className="badge is-near">Near you</span> : null}
+    {event.phase === "past" ? <span className="badge is-past">Past event</span> : null}
+  </div>;
+}
+
+function EventMeta({ event }: { event: RankedEvent }) {
+  return <ul className="meta-list">
+    <li><CalendarIcon />{event.dateLabel}</li>
+    <li><PinIcon />{event.location}</li>
+    {event.kilometers != null && event.phase !== "past" ? <li className="is-distance"><PinIcon />{formatKilometers(event.kilometers)}</li> : null}
+  </ul>;
+}
+
+function EventCard({ event, onVolunteer }: { event: RankedEvent; onVolunteer?: () => void }) {
+  const past = event.phase === "past";
+  return <article className={`event-card${past ? " is-past" : ""}`}>
     <div className="event-card-media">
       <img src={event.image} alt="" loading="lazy" />
-      {event.live ? <span className="badge is-live">Happening now</span> : null}
+      <EventBadges event={event} />
     </div>
     <div className="event-card-body">
       <span className="badge">{event.kind}</span>
       <h3>{event.title}</h3>
-      <ul className="meta-list">
-        <li><PinIcon />{event.location}</li>
-        <li><CalendarIcon />{event.dateLabel}</li>
-      </ul>
+      <EventMeta event={event} />
       <p>{event.summary}</p>
       <div className="event-card-foot">
-        <Link className="link-arrow" href={`/events/${event.slug}`}>{event.live ? "Register" : "See full details"} <Arrow /></Link>
-        {onVolunteer ? <button className="link-arrow is-muted" type="button" onClick={onVolunteer}>Volunteer <Arrow /></button> : null}
+        <Link className="link-arrow" href={`/events/${event.slug}`}>{past ? "See what happened" : event.registerUrl ? "Register" : "See full details"} <Arrow /></Link>
+        {onVolunteer && !past ? <button className="link-arrow is-muted" type="button" onClick={onVolunteer}>Volunteer <Arrow /></button> : null}
       </div>
     </div>
   </article>;
+}
+
+function FeaturedEvent({ event, now, onVolunteer }: { event: RankedEvent; now: number; onVolunteer?: () => void }) {
+  const countdown = relativeLabel(event, now);
+  return <article className="event-feature">
+    <div className="event-feature-media">
+      <img src={event.image} alt="" />
+      <EventBadges event={event} next />
+    </div>
+    <div className="event-feature-copy">
+      <span className="badge">{event.kind}</span>
+      <h3>{event.title}</h3>
+      {countdown ? <span className="event-countdown"><ClockIcon />{countdown}</span> : null}
+      <EventMeta event={event} />
+      {event.summary ? <p>{event.summary}</p> : null}
+      <div className="actions">
+        {event.registerUrl
+          ? <a className="btn btn-primary" href={event.registerUrl} target="_blank" rel="noreferrer">Register <Arrow /></a>
+          : <Link className="btn btn-primary" href={`/events/${event.slug}`}>See full details <Arrow /></Link>}
+        {event.registerUrl ? <Link className="btn btn-glass" href={`/events/${event.slug}`}>Event details</Link> : null}
+        {onVolunteer ? <button className="btn btn-glass" type="button" onClick={onVolunteer}>Volunteer</button> : null}
+      </div>
+    </div>
+  </article>;
+}
+
+/**
+ * The next event for this visitor as a large card, followed by every other event:
+ * upcoming soonest-first (nearby ones first), then past events, most recent first.
+ */
+function EventsShowcase({ limit, onVolunteer }: { limit?: number; onVolunteer?: () => void }) {
+  const { ranked, now, located } = useRankedEvents();
+  const featured = ranked[0] && ranked[0].phase !== "past" ? ranked[0] : null;
+  const rest = (featured ? ranked.slice(1) : ranked).slice(0, limit);
+  const anyNearby = ranked.some((event) => event.nearby && event.phase !== "past");
+  return <>
+    {located && anyNearby ? <p className="events-note">Events near you are shown first.</p> : null}
+    {featured ? <FeaturedEvent event={featured} now={now} onVolunteer={onVolunteer} /> : null}
+    {rest.length ? <div className="event-grid">
+      {rest.map((event) => <EventCard event={event} key={event.slug} onVolunteer={onVolunteer} />)}
+    </div> : null}
+  </>;
 }
 
 function ResourcesSection({ id }: { id?: string }) {
@@ -238,14 +372,14 @@ function ResourcesSection({ id }: { id?: string }) {
           <span className="badge">Ongoing devotional · Substack</span>
           <h3>The Zoe Devotional</h3>
           <p>Scripture, reflection, and Christ-centered encouragement for the life you are living now.</p>
-          <a className="btn btn-primary" href="https://substack.com/" target="_blank" rel="noreferrer">Read the Devotional <Arrow /></a>
+          <a className="btn btn-primary" href="https://thezoedevotional.substack.com/" target="_blank" rel="noreferrer">Read the Devotional <Arrow /></a>
         </article>
         <article className="resource-card has-image">
           <img src="/figma/bible-plan.jpg" alt="" loading="lazy" />
           <span className="badge">Bible plan</span>
           <h3>Who Is Jesus</h3>
           <p>Meet Jesus in Scripture and discover the life found in Him. Take time to slow down and reflect on His Word.</p>
-          <a className="btn btn-glass" href="https://www.bible.com/" target="_blank" rel="noreferrer">Open in the Bible App <Arrow /></a>
+          <a className="btn btn-glass" href="https://www.bible.com/reading-plans/71788-who-is-jesus" target="_blank" rel="noreferrer">Open in the Bible App <Arrow /></a>
         </article>
       </div>
     </div>
@@ -296,8 +430,6 @@ function PlanSteps({ campus, onOpen }: { campus: Campus; onOpen: (kind: "childre
 }
 
 function HomePage() {
-  const { events } = useSite();
-  const globalEvents = events.filter((event) => !event.campusSlug);
   return <>
     <section className="page-hero hero-home">
       <div className="page-hero-media" aria-hidden="true">
@@ -382,9 +514,7 @@ function HomePage() {
           body="Join us for powerful moments of worship, teaching, and fellowship. We'd love to see you at one of our upcoming gatherings."
           action={<Link className="link-arrow" href="/events">All events <Arrow /></Link>}
         />
-        <div className="event-grid">
-          {globalEvents.map((event) => <EventCard event={event} key={event.slug} />)}
-        </div>
+        <EventsShowcase limit={6} />
       </div>
     </section>
 
@@ -832,7 +962,7 @@ function VisitPage() {
     setError(null);
     try {
       const response = await fetch(`/api/campus-near?${params.toString()}`);
-      const data = await response.json() as { slug?: string; kilometers?: number | null; error?: string };
+      const data = await response.json() as { slug?: string; kilometers?: number | null; error?: string; matched?: string; lat?: number; lng?: number };
       if (response.status === 404) {
         setResult("online");
       } else if (!response.ok || !data.slug) {
@@ -841,6 +971,7 @@ function VisitPage() {
         const campus = bySlug.get(data.slug);
         if (!campus) throw new Error("We couldn't find a campus from that search.");
         setResult({ campus, kilometers: data.kilometers ?? null });
+        if (data.matched !== "name" && Number.isFinite(data.lat) && Number.isFinite(data.lng)) rememberVisitorLocation({ lat: data.lat!, lng: data.lng! });
       }
       window.setTimeout(() => document.getElementById("visit-result")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
     } catch (problem) {
@@ -1315,17 +1446,23 @@ function PneumaPage() {
 }
 
 function EventsPage() {
-  const { events, moments } = useSite();
-  const globalEvents = events.filter((event) => !event.campusSlug);
+  const { moments } = useSite();
   const [more, setMore] = useState(false);
   const [volunteer, setVolunteer] = useState(false);
   const photos = more ? moments : moments.slice(0, 10);
   return <>
     <PageHero label="Zoe events" title="Gather With Purpose" body="From major gatherings to teaching moments across our campuses, Zoe events give us opportunities to come together, grow in Christ, and share life as one household." image="/figma/asset-03-102235.jpg">
       <div className="actions is-center">
-        <a className="btn btn-primary" href="#gather">Explore Gatherings <Arrow /></a>
+        <a className="btn btn-primary" href="#events">See Upcoming Events <Arrow /></a>
       </div>
     </PageHero>
+
+    <section id="events" className="section is-raised">
+      <div className="container">
+        <SectionHead label="Throughout the year" title={<>Our Global <span className="hl">Gatherings</span></>} body="The next gathering is first, followed by everything coming up and the gatherings we've already shared together." />
+        <EventsShowcase onVolunteer={() => setVolunteer(true)} />
+      </div>
+    </section>
 
     <section id="gather" className="section">
       <div className="container">
@@ -1345,38 +1482,6 @@ function EventsPage() {
               </div>
             </article>
           ))}
-        </div>
-      </div>
-    </section>
-
-    <section className="section now is-lemon">
-      <div className="container now-grid">
-        <div>
-          <Label>Happening now</Label>
-          <h2>Don&apos;t Miss What&apos;s Happening Now</h2>
-          <p>Registration is open for Ignite 2026. Join us for this year&apos;s gathering and be part of what God is doing across the Zoe Household.</p>
-        </div>
-        <article className="now-card">
-          <span className="badge is-live">Global event</span>
-          <h3>Ignite 2026</h3>
-          <ul className="meta-list">
-            <li><CalendarIcon />Oct 12 – 15, 2026</li>
-            <li><PinIcon />Atlanta, GA</li>
-          </ul>
-          <p>A global gathering held every year at Zoe Household. Join us for four days of intense teaching, worship, and fellowship.</p>
-          <div className="actions">
-            <Link className="btn btn-primary" href="/events/ignite">Register <Arrow /></Link>
-            <button className="btn btn-glass" type="button" onClick={() => setVolunteer(true)}>Volunteer</button>
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <section className="section is-raised">
-      <div className="container">
-        <SectionHead label="Throughout the year" title={<>Our Global <span className="hl">Gatherings</span></>} body="Throughout the year, we gather in different ways and at different places. We'd be glad to have you." />
-        <div className="event-grid">
-          {globalEvents.map((event) => <EventCard event={event} key={event.slug} onVolunteer={() => setVolunteer(true)} />)}
         </div>
       </div>
     </section>
@@ -1402,10 +1507,13 @@ function EventsPage() {
 }
 
 function EventDetailPage({ slug }: { slug: string }) {
-  const { events } = useSite();
+  const { events, generatedAt } = useSite();
   const event = events.find((item) => item.slug === slug);
   const [volunteer, setVolunteer] = useState(false);
+  const now = useNow(generatedAt);
   if (!event) return <NotFoundPage />;
+  const phase = eventPhase(event, now);
+  const heading = phase === "live" ? "Happening now" : phase === "past" ? "Past gathering" : "Next gathering";
   return <>
     <PageHero label={event.kind} title={event.title} body={event.intro} image={event.image} />
     <section className="section">
@@ -1416,12 +1524,16 @@ function EventDetailPage({ slug }: { slug: string }) {
           <p>{event.body}</p>
         </div>
         <aside className="info-card">
-          <h3>Next gathering</h3>
+          <h3>{heading}</h3>
           <ul className="meta-list">
             <li><CalendarIcon />{event.dateLabel}</li>
             <li><PinIcon />{event.location}</li>
           </ul>
-          {event.registerUrl ? <>
+          {phase === "past" ? <>
+            <p>This gathering has ended. See what&apos;s coming up next, or ask to hear about the next one.</p>
+            <Link className="btn btn-primary btn-block" href="/events#events">See Upcoming Events <Arrow /></Link>
+            <button className="btn btn-glass btn-block" type="button" onClick={() => setVolunteer(true)}>Get Event Updates</button>
+          </> : event.registerUrl ? <>
             <p>Secure your place for this gathering.</p>
             <a className="btn btn-primary btn-block" href={event.registerUrl} target="_blank" rel="noreferrer">Register / Details <Arrow /></a>
             <button className="btn btn-glass btn-block" type="button" onClick={() => setVolunteer(true)}>Get Event Updates</button>
@@ -1614,7 +1726,7 @@ function ScholarshipPage() {
     {apply ? <Modal onClose={() => { setApply(false); setSent(false); setError(null); }}>
       <form className="form-card" onSubmit={sendApplication}>
         <button className="form-close" type="button" onClick={() => { setApply(false); setSent(false); setError(null); }} aria-label="Close form">×</button>
-        <span className="eyebrow">Zoe Scholarship</span>
+        <p className="label">Zoe Scholarship</p>
         <h2>Start Your Application</h2>
         {sent ? <p>Your application has been received. We&apos;ll be in touch about the next step.</p> : <>
           <p>Share a few details and the scholarship team will follow up with the next step.</p>
@@ -1626,7 +1738,7 @@ function ScholarshipPage() {
             <label className="field full"><span>Tell us about your application</span><textarea name="message" required placeholder="Your program, campus, and anything we should know." /></label>
             <label className="checkbox full"><input name="consent" type="checkbox" required /> I agree to be contacted about this scholarship application.</label>
             {error ? <p className="form-error full" role="alert">{error}</p> : null}
-            <button className="button full" type="submit" disabled={submitting}>{submitting ? "Sending…" : "Submit Application"}</button>
+            <button className="btn btn-primary btn-block full" type="submit" disabled={submitting}>{submitting ? "Sending…" : "Submit Application"}</button>
           </div>
         </>}
       </form>

@@ -10,6 +10,7 @@ export const EVENTS_QUERY = groq`*[_type == "event"] | order(coalesce(order, 50)
   endDate,
   dateLabel,
   location,
+  geo,
   "campusSlug": campus->slug.current,
   image,
   summary,

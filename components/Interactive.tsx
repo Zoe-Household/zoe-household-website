@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
+import { DatePicker } from "@/components/DatePicker";
 import { Campus, campuses } from "@/data/site";
 
 type FormKind = "visit" | "children" | "reminder" | "online" | "prayer" | "inquiry";
@@ -90,13 +91,13 @@ export function FormCard({ kind, campus, onClose }: { kind: FormKind; campus?: C
   if (sent) {
     return <div className={`form-card success-card${kind === "visit" ? " is-visit" : ""}`} role="status">
       {onClose && <button className="form-close" type="button" onClick={onClose} aria-label="Close form">×</button>}
-      <span className="eyebrow">Received</span><h2>Thank you.</h2><p>{success}</p>
+      <p className="label is-center">Received</p><h2>Thank you.</h2><p>{success}</p>
     </div>;
   }
 
   return <form className={`form-card${kind === "visit" ? " is-visit" : ""}`} onSubmit={submit}>
     {onClose && <button className="form-close" type="button" onClick={onClose} aria-label="Close form">×</button>}
-    <span className="eyebrow">{campus?.name ?? "Zoe Household"}</span>
+    <p className="label">{campus?.name ?? "Zoe Household"}</p>
     <h2>{resolvedHeading}</h2>
     <p>{description}</p>
     <input type="text" name="website" tabIndex={-1} autoComplete="off" className="form-honeypot" aria-hidden="true" />
@@ -124,7 +125,7 @@ export function FormCard({ kind, campus, onClose }: { kind: FormKind; campus?: C
         <label className="field"><span>Campus</span><select name="campus" required defaultValue=""><option value="" disabled>Select a campus</option>{campuses.map((item) => <option key={item.slug} value={item.slug}>{item.shortName}</option>)}<option value="none">I don’t currently attend a campus</option></select></label>
         <label className="field full"><span>Prayer request</span><textarea name="request" required /></label>
         <label className="checkbox full"><input type="checkbox" checked={timeSensitive} onChange={(event) => setTimeSensitive(event.target.checked)} /> This is time-sensitive.</label>
-        {timeSensitive && <label className="field full"><span>Relevant date</span><input name="relevantDate" type="date" required /></label>}
+        <DatePicker name="relevantDate" label={timeSensitive ? "Relevant date" : "Relevant date (optional)"} required={timeSensitive} />
       </>}
 
       {kind === "inquiry" && <>
@@ -134,7 +135,7 @@ export function FormCard({ kind, campus, onClose }: { kind: FormKind; campus?: C
         <label className="field full"><span>Message</span><textarea name="message" required /></label>
         <label className="checkbox full"><input type="checkbox" name="consent" required /> I agree that Zoe Household may use these details to respond to my inquiry.</label>
       </>}
-      <button className="button button-dark full" type="submit" disabled={submitting}>{submitting ? "Sending…" : kind === "visit" ? "Send Message" : "Submit"}</button>
+      <button className="btn btn-primary btn-block full" type="submit" disabled={submitting}>{submitting ? "Sending…" : kind === "visit" ? "Send Message" : "Submit"}</button>
     </div>
   </form>;
 }

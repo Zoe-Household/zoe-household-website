@@ -18,4 +18,9 @@ export default defineConfig({
     structureTool({ structure }),
     visionTool({ defaultApiVersion: apiVersion }),
   ],
+  document: {
+    // Submissions only come from the website forms.
+    newDocumentOptions: (prev) => prev.filter((template) => template.templateId !== "submission"),
+    actions: (prev, context) => (context.schemaType === "submission" ? prev.filter(({ action }) => action !== "duplicate") : prev),
+  },
 });

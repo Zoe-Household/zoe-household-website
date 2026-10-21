@@ -41,8 +41,6 @@ function keyed<T extends object>(items: T[]) {
   return items.map((item, index) => ({ _key: `k${index}`, ...item }));
 }
 
-const languageFor = (country: string) => (country === "Nigeria" ? "English & Yoruba" : "English");
-
 const SHARED_MOMENT = "/figma/about-hero.jpg";
 
 type GlobalEvent = {
@@ -134,7 +132,7 @@ async function seedCampuses() {
       whatToExpect:
         `You can expect a warm welcome, worship, prayer, and clear teaching from Scripture at Zoe ${campus.shortName}. ` +
         `Come as you are — someone from the team will be glad to help you find your way and settle in.`,
-      languages: languageFor(campus.country),
+      languages: "English",
       services: keyed(
         campus.services.map((service) => ({
           _type: "object",

@@ -1,15 +1,16 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { z } from "zod";
+import { writeClient } from "@/sanity/lib/write-client";
 
 /**
  * Backend for the site's form submissions (Prayer Request, Visit/Children/Reminder
  * registration, and General Inquiry / Contact).
  *
- * There is no database yet, so submissions are persisted as JSON-lines files under
- * data/submissions/ (gitignored) — an interim "ticketing system" per the project's
- * PRD, until a proper CMS/DB or ChurchOS integration lands. Every submission also
- * triggers an admin email notification via Resend when RESEND_API_KEY is configured.
+ * Submissions are stored in Sanity as `submission` documents (see the Studio's
+ * Submissions list) when SANITY_API_WRITE_TOKEN is set. Without a token (local
+ * development) they fall back to JSON-lines files under data/submissions/. Every
+ * submission also triggers an admin email via Resend when RESEND_API_KEY is set.
  */
 
 export const FORM_KINDS = ["visit", "children", "reminder", "online", "prayer", "inquiry"] as const;
@@ -55,8 +56,8 @@ const schemasByKind = {
     phone: phoneField,
     request: z.string().trim().min(1, "Prayer request is required").max(4000),
     timeSensitive: z.boolean().optional(),
-    relevantDate: z.string().trim().optional().or(z.literal("")),
-  }),
+    relevantDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid date").optional().or(z.literal("")),
+  }).refine((data) => !data.timeSensitive || Boolean(data.relevantDate), { message: "Choose the date this prayer request relates to.", path: ["relevantDate"] }),
   inquiry: baseSchema.extend({
     name: nameField,
     email: emailField,
@@ -113,10 +114,48 @@ export type StoredSubmission = {
   data: Record<string, unknown>;
 };
 
+const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : undefined);
+
+function toSanityDocument({ id, kind, receivedAt, data }: StoredSubmission) {
+  const children = Array.isArray(data.children)
+    ? (data.children as Record<string, unknown>[]).map((child, index) => ({
+      _key: `child${index}`,
+      name: text(child.name),
+      ageGroup: text(child.ageGroup),
+      notes: text(child.notes),
+    }))
+    : undefined;
+  return {
+    // The dot in the ID keeps the document out of the public dataset API.
+    _id: `submission.${id}`,
+    _type: "submission",
+    status: "new",
+    kind,
+    receivedAt,
+    name: text(data.name),
+    email: text(data.email),
+    phone: text(data.phone),
+    campus: text(data.campus),
+    topic: text(data.topic),
+    region: text(data.region),
+    message: text(data.request) ?? text(data.message),
+    timeSensitive: typeof data.timeSensitive === "boolean" ? data.timeSensitive : undefined,
+    relevantDate: text(data.relevantDate),
+    children,
+    campusEmails: typeof data.campusEmails === "boolean" ? data.campusEmails : undefined,
+    consent: data.consent === true ? true : undefined,
+  };
+}
+
 export async function persistSubmission(submission: StoredSubmission) {
+  if (writeClient) {
+    await writeClient.create(toSanityDocument(submission));
+    return "sanity" as const;
+  }
   await fs.mkdir(SUBMISSIONS_DIR, { recursive: true });
   const file = path.join(SUBMISSIONS_DIR, `${submission.kind}.jsonl`);
   await fs.appendFile(file, `${JSON.stringify(submission)}\n`, "utf8");
+  return "file" as const;
 }
 
 function renderEmailBody(kind: FormKind, data: Record<string, unknown>) {

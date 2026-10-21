@@ -83,13 +83,22 @@ export async function POST(request: NextRequest) {
     data,
   };
 
+  let saved = false;
   try {
     await persistSubmission(submission);
+    saved = true;
   } catch (error) {
     console.error("[api/submit] Failed to persist submission", error);
   }
 
   const emailResult = await notifyByEmail(kind as FormKind, data);
+
+  if (!saved && !emailResult.sent) {
+    return NextResponse.json(
+      { ok: false, error: "We couldn't save your submission. Please try again in a moment." },
+      { status: 502 },
+    );
+  }
 
   return NextResponse.json({ ok: true, notified: emailResult.sent });
 }

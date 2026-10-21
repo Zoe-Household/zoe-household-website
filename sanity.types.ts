@@ -15,11 +15,33 @@
 export declare const internalGroqTypeReferenceTo: unique symbol;
 
 // Source: schema.json
-export type CampusReference = {
-  _ref: string;
-  _type: "reference";
-  _weak?: boolean;
-  [internalGroqTypeReferenceTo]?: "campus";
+export type Submission = {
+  _id: string;
+  _type: "submission";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  status?: "new" | "inProgress" | "done";
+  notes?: string;
+  kind?: "prayer" | "inquiry" | "visit" | "children" | "reminder" | "online";
+  receivedAt?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  campus?: string;
+  topic?: string;
+  region?: string;
+  message?: string;
+  timeSensitive?: boolean;
+  relevantDate?: string;
+  children?: Array<{
+    name?: string;
+    ageGroup?: string;
+    notes?: string;
+    _key: string;
+  }>;
+  campusEmails?: boolean;
+  consent?: boolean;
 };
 
 export type SanityImageAssetReference = {
@@ -27,6 +49,13 @@ export type SanityImageAssetReference = {
   _type: "reference";
   _weak?: boolean;
   [internalGroqTypeReferenceTo]?: "sanity.imageAsset";
+};
+
+export type CampusReference = {
+  _ref: string;
+  _type: "reference";
+  _weak?: boolean;
+  [internalGroqTypeReferenceTo]?: "campus";
 };
 
 export type Event = {
@@ -44,13 +73,6 @@ export type Event = {
     | "Workshop"
     | "Service"
     | "Outreach";
-  status?: "upcoming" | "live" | "past";
-  featured?: boolean;
-  startDate?: string;
-  endDate?: string;
-  dateLabel?: string;
-  location?: string;
-  campus?: CampusReference;
   image?: {
     asset?: SanityImageAssetReference;
     media?: unknown;
@@ -59,6 +81,14 @@ export type Event = {
     _type: "image";
   };
   summary?: string;
+  registerUrl?: string;
+  startDate?: string;
+  endDate?: string;
+  dateLabel?: string;
+  location?: string;
+  geo?: Geopoint;
+  campus?: CampusReference;
+  status?: "upcoming" | "live" | "past";
   intro?: string;
   body?: Array<{
     children?: Array<{
@@ -78,24 +108,8 @@ export type Event = {
     _type: "block";
     _key: string;
   }>;
-  registerUrl?: string;
+  featured?: boolean;
   order?: number;
-};
-
-export type SanityImageCrop = {
-  _type: "sanity.imageCrop";
-  top?: number;
-  bottom?: number;
-  left?: number;
-  right?: number;
-};
-
-export type SanityImageHotspot = {
-  _type: "sanity.imageHotspot";
-  x?: number;
-  y?: number;
-  height?: number;
-  width?: number;
 };
 
 export type Campus = {
@@ -146,10 +160,33 @@ export type Campus = {
   order?: number;
 };
 
+export type SanityImageCrop = {
+  _type: "sanity.imageCrop";
+  top?: number;
+  bottom?: number;
+  left?: number;
+  right?: number;
+};
+
+export type SanityImageHotspot = {
+  _type: "sanity.imageHotspot";
+  x?: number;
+  y?: number;
+  height?: number;
+  width?: number;
+};
+
 export type Slug = {
   _type: "slug";
   current?: string;
   source?: string;
+};
+
+export type Geopoint = {
+  _type: "geopoint";
+  lat?: number;
+  lng?: number;
+  alt?: number;
 };
 
 export type SanityImagePaletteSwatch = {
@@ -242,33 +279,27 @@ export type SanityImageAsset = {
   source?: SanityAssetSourceData;
 };
 
-export type Geopoint = {
-  _type: "geopoint";
-  lat?: number;
-  lng?: number;
-  alt?: number;
-};
-
 export type AllSanitySchemaTypes =
-  | CampusReference
+  | Submission
   | SanityImageAssetReference
+  | CampusReference
   | Event
+  | Campus
   | SanityImageCrop
   | SanityImageHotspot
-  | Campus
   | Slug
+  | Geopoint
   | SanityImagePaletteSwatch
   | SanityImagePalette
   | SanityImageDimensions
   | SanityImageMetadata
   | SanityFileAsset
   | SanityAssetSourceData
-  | SanityImageAsset
-  | Geopoint;
+  | SanityImageAsset;
 
 // Source: ../sanity/lib/queries.ts
 // Variable: EVENTS_QUERY
-// Query: *[_type == "event"] | order(coalesce(order, 50) asc, startDate desc){  "slug": slug.current,  title,  kind,  status,  featured,  startDate,  endDate,  dateLabel,  location,  "campusSlug": campus->slug.current,  image,  summary,  intro,  body,  registerUrl}
+// Query: *[_type == "event"] | order(coalesce(order, 50) asc, startDate desc){  "slug": slug.current,  title,  kind,  status,  featured,  startDate,  endDate,  dateLabel,  location,  geo,  "campusSlug": campus->slug.current,  image,  summary,  intro,  body,  registerUrl}
 export type EVENTS_QUERY_RESULT = Array<{
   slug: string | null;
   title: string | null;
@@ -286,6 +317,7 @@ export type EVENTS_QUERY_RESULT = Array<{
   endDate: string | null;
   dateLabel: string | null;
   location: string | null;
+  geo: Geopoint | null;
   campusSlug: string | null;
   image: {
     asset?: SanityImageAssetReference;
