@@ -28,7 +28,15 @@ export type Submission = {
   name?: string;
   email?: string;
   phone?: string;
-  campus?: string;
+  campus?:
+    | "atlanta"
+    | "abeokuta"
+    | "houston"
+    | "ikeja"
+    | "ipaja"
+    | "london"
+    | "ifako"
+    | "none";
   topic?: string;
   region?: string;
   message?: string;

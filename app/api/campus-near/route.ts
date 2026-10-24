@@ -21,6 +21,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Enter a city, address, or campus." }, { status: 400 });
   }
 
+  const named = query ? campusByName(query) : null;
+  if (!direct && named?.slug === "online") {
+    return NextResponse.json({ slug: named.slug, kilometers: null, matched: "name" });
+  }
+
   // Resolve the search to a real coordinate first so we can always return a true
   // distance to the nearest campus. Name matching is only a fallback for when a
   // place can't be geocoded (offline, rate-limited, or an unrecognised address).
@@ -36,7 +41,6 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const named = query ? campusByName(query) : null;
   if (named) {
     return NextResponse.json({ slug: named.slug, kilometers: null, matched: "name", lat: named.lat, lng: named.lng });
   }

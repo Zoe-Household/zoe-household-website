@@ -49,7 +49,7 @@ export function FormCard({ kind, campus, onClose }: { kind: FormKind; campus?: C
       payload.email = formData.get("email") ?? "";
     } else {
       for (const [key, value] of formData.entries()) {
-        if (key === "website" || key === "campus") continue;
+        if (key === "website" || (key === "campus" && campus?.slug)) continue;
         payload[key] = value;
       }
       payload.campusEmails = formData.get("campusEmails") === "on";

@@ -1,6 +1,8 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { z } from "zod";
+import { campuses } from "@/data/site";
+import { campusByName } from "@/lib/nearest-campus";
 import { writeClient } from "@/sanity/lib/write-client";
 
 /**
@@ -116,6 +118,30 @@ export type StoredSubmission = {
 
 const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : undefined);
 
+export function resolveSubmissionCampus(data: Record<string, unknown>): string {
+  const rawCampus = text(data.campus);
+  if (rawCampus) {
+    const lower = rawCampus.toLowerCase();
+    if (lower === "none") return "none";
+    const direct = campuses.find(
+      (campus) =>
+        campus.slug === lower ||
+        campus.shortName.toLowerCase() === lower ||
+        campus.name.toLowerCase() === lower,
+    );
+    if (direct) return direct.slug;
+    const matched = campusByName(rawCampus);
+    if (matched) return matched.slug;
+    return lower;
+  }
+  const rawRegion = text(data.region);
+  if (rawRegion) {
+    const matched = campusByName(rawRegion);
+    if (matched) return matched.slug;
+  }
+  return "none";
+}
+
 function toSanityDocument({ id, kind, receivedAt, data }: StoredSubmission) {
   const children = Array.isArray(data.children)
     ? (data.children as Record<string, unknown>[]).map((child, index) => ({
@@ -135,7 +161,10 @@ function toSanityDocument({ id, kind, receivedAt, data }: StoredSubmission) {
     name: text(data.name),
     email: text(data.email),
     phone: text(data.phone),
-    campus: text(data.campus),
+    campus: (() => {
+      const resolved = resolveSubmissionCampus(data);
+      return resolved === "none" && kind === "online" ? "online" : resolved;
+    })(),
     topic: text(data.topic),
     region: text(data.region),
     message: text(data.request) ?? text(data.message),
@@ -148,13 +177,15 @@ function toSanityDocument({ id, kind, receivedAt, data }: StoredSubmission) {
 }
 
 export async function persistSubmission(submission: StoredSubmission) {
+  const campus = resolveSubmissionCampus(submission.data);
   if (writeClient) {
     await writeClient.create(toSanityDocument(submission));
     return "sanity" as const;
   }
-  await fs.mkdir(SUBMISSIONS_DIR, { recursive: true });
-  const file = path.join(SUBMISSIONS_DIR, `${submission.kind}.jsonl`);
-  await fs.appendFile(file, `${JSON.stringify(submission)}\n`, "utf8");
+  const campusDir = path.join(SUBMISSIONS_DIR, campus);
+  await fs.mkdir(campusDir, { recursive: true });
+  const file = path.join(campusDir, `${submission.kind}.jsonl`);
+  await fs.appendFile(file, `${JSON.stringify({ ...submission, campus })}\n`, "utf8");
   return "file" as const;
 }
 

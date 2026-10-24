@@ -24,6 +24,7 @@ function longestTerm(campus: Campus, text: string) {
 
 export function nearestCampus(point: Point) {
   return campuses
+    .filter((campus) => campus.slug !== "online")
     .map((campus) => ({ campus, kilometers: distanceKm(point, campus) }))
     .sort((a, b) => a.kilometers - b.kilometers)[0];
 }

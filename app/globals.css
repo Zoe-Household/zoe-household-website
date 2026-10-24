@@ -517,13 +517,11 @@ button { cursor: pointer; }
   background: var(--white);
   transition: transform 0.35s var(--ease), box-shadow 0.35s ease;
 }
-.campus-card:nth-child(-n + 3) { grid-column: span 4; }
 .campus-card:hover, .campus-card:focus-visible { transform: translateY(-4px); box-shadow: 0 26px 50px rgba(21, 32, 34, 0.14); }
 .campus-card-head { display: grid; gap: 4px; }
 .campus-card-head h3 { font-size: 32px; font-weight: 900; line-height: 1.05; text-transform: uppercase; }
 .campus-card-head p { color: var(--ink-muted); font-size: 16px; line-height: 1.6; }
 .campus-card-photo { position: relative; height: 287px; overflow: hidden; border-radius: 6px; background: #1d1d1d; }
-.campus-card:nth-child(-n + 3) .campus-card-photo { height: 340px; }
 .campus-card-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center 22%; transition: transform 0.7s var(--ease); }
 .campus-card-photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0, 0, 0, 0.12) 30%, rgba(0, 0, 0, 0.7) 100%); }
 .campus-card:hover .campus-card-photo img, .campus-card:focus-visible .campus-card-photo img { transform: scale(1.05); }
@@ -1258,9 +1256,8 @@ button { cursor: pointer; }
   .beliefs-index { display: none; }
 
   .campus-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
-  .campus-card, .campus-card:nth-child(-n + 3) { grid-column: auto; }
-  .campus-card:first-child { grid-column: 1 / -1; }
-  .campus-card:nth-child(-n + 3) .campus-card-photo, .campus-card-photo { height: 300px; }
+  .campus-card { grid-column: auto; }
+  .campus-card-photo { height: 300px; }
 }
 
 @media (max-width: 900px) {
@@ -1343,9 +1340,9 @@ button { cursor: pointer; }
     scrollbar-width: none;
   }
   .campus-grid::-webkit-scrollbar { display: none; }
-  .campus-card, .campus-card:first-child, .campus-card:nth-child(-n + 3) { grid-column: auto; scroll-snap-align: start; }
+  .campus-card, .campus-card:first-child { grid-column: auto; scroll-snap-align: start; }
   .campus-card:hover { transform: none; }
-  .campus-card:nth-child(-n + 3) .campus-card-photo, .campus-card-photo { height: 287px; }
+  .campus-card-photo { height: 287px; }
   .campus-card-head h3 { font-size: 30px; }
 
   .campus-hero { min-height: auto; padding: 132px 0 28px; }

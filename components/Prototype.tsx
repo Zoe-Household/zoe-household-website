@@ -250,7 +250,7 @@ function Accordion({ items, initial = 0, numbered = false }: { items: readonly (
   </div>;
 }
 
-const campusOrder = ["atlanta", "abeokuta", "houston", "ikeja", "ipaja", "london", "ifako"];
+const campusOrder = ["atlanta", "abeokuta", "houston", "ikeja", "ipaja", "london", "ifako", "online"];
 
 function campusTitle(campus: Campus) {
   return campus.slug === "london" ? "UK" : campus.shortName;
@@ -499,7 +499,7 @@ function HomePage() {
         <SectionHead
           label="Our campuses"
           title={<>One Family, <span className="hl">Many Cities</span></>}
-          body="Seven campuses across Nigeria, the United States, and the United Kingdom. Find the gathering nearest you — a campus pastor will be glad to welcome you."
+          body="Campuses across Nigeria, the United States, the United Kingdom, and online. Find the gathering nearest you — a campus pastor will be glad to welcome you."
           action={<Link className="btn btn-dark" href="/visit">Find a Campus <Arrow /></Link>}
         />
         <CampusGrid />
@@ -1081,7 +1081,7 @@ function VisitPage() {
 
     <section className="section campuses is-paper">
       <div className="container">
-        <SectionHead label="Our campuses" title={<>One Family, <span className="hl">Many Cities</span></>} body="Seven campuses across Nigeria, the United States, and the United Kingdom. Choose a campus to see service times, directions, and what to expect." />
+        <SectionHead label="Our campuses" title={<>One Family, <span className="hl">Many Cities</span></>} body="Campuses across Nigeria, the United States, the United Kingdom, and online. Choose a campus to see service times, directions, and what to expect." />
         <CampusGrid />
       </div>
     </section>
@@ -1089,12 +1089,12 @@ function VisitPage() {
     <section className="section">
       <div className="container">
         <SectionHead label="Plan your visit" title={<>Planning Your <span className="hl">Visit?</span></>} body="Everything you need for your first visit, all in one place." />
-        <PlanSteps campus={atlanta} onOpen={setModal} />
+        <PlanSteps campus={result && result !== "online" ? result.campus : atlanta} onOpen={setModal} />
       </div>
     </section>
 
     <WordCta />
-    {modal ? <Modal onClose={() => setModal(null)}><FormCard kind={modal} campus={atlanta} onClose={() => setModal(null)} /></Modal> : null}
+    {modal ? <Modal onClose={() => setModal(null)}><FormCard kind={modal} campus={result && result !== "online" ? result.campus : atlanta} onClose={() => setModal(null)} /></Modal> : null}
   </>;
 }
 
@@ -1141,8 +1141,8 @@ function CampusPage({ campus }: { campus: MergedCampus }) {
             <dd>{isPending(first.schedule) ? "Time to be announced" : first.schedule}</dd>
           </div>
           <div>
-            <dt><PinIcon />Location</dt>
-            <dd>{known ? campus.address : "Location to be announced"}</dd>
+            <dt><PinIcon />{campus.slug === "online" ? "Where we gather" : "Location"}</dt>
+            <dd>{known ? campus.address : campus.slug === "online" ? "Streaming online" : "Location to be announced"}</dd>
           </div>
           <div>
             {campus.pastor
@@ -1207,11 +1207,13 @@ function CampusPage({ campus }: { campus: MergedCampus }) {
                 <span className="badge">{service.name}</span>
                 <ul className="meta-list">
                   <li><ClockIcon />{isPending(service.schedule) ? "Time to be announced" : service.schedule}</li>
-                  <li><PinIcon />{serviceKnown ? service.address : "Location to be announced"}</li>
+                  <li><PinIcon />{serviceKnown ? service.address : campus.slug === "online" ? "Streaming online" : "Location to be announced"}</li>
                 </ul>
                 {serviceKnown
                   ? <a className="link-arrow" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(service.address)}`} target="_blank" rel="noreferrer">Get directions <Arrow /></a>
-                  : <span className="muted">Directions will be shared once the location is set.</span>}
+                  : campus.slug === "online"
+                    ? <a className="link-arrow" href={socialLinks.youtube} target="_blank" rel="noreferrer">Watch on YouTube <Arrow /></a>
+                    : <span className="muted">Directions will be shared once the location is set.</span>}
               </article>;
             })}
             {campus.services.length > 1 ? <p className="note"><strong>Note:</strong> Please check the location for each gathering before you arrive, as different gatherings may meet in different places.</p> : null}
@@ -1219,6 +1221,11 @@ function CampusPage({ campus }: { campus: MergedCampus }) {
           </div>
           {known ? <div className="gather-map">
             <iframe title={`Map of Zoe ${campus.shortName}`} src={embed} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+          </div> : campus.slug === "online" ? <div className="gather-map is-empty">
+            <PlayIcon />
+            <h3>Stream from anywhere</h3>
+            <p>Gather with Zoe {campus.shortName} from wherever you are. Service times and streaming details will be shared here as they are released.</p>
+            <a className="btn btn-primary" href={socialLinks.youtube} target="_blank" rel="noreferrer"><PlayIcon /> Watch on YouTube</a>
           </div> : <div className="gather-map is-empty">
             <PinIcon />
             <h3>Location coming soon</h3>
@@ -1581,7 +1588,7 @@ function EventDetailPage({ slug }: { slug: string }) {
         <Link className="btn btn-dark" href="/visit">Find Your Campus <Arrow /></Link>
       </div>
     </section>
-    {volunteer ? <Modal onClose={() => setVolunteer(false)}><FormCard kind="inquiry" onClose={() => setVolunteer(false)} /></Modal> : null}
+    {volunteer ? <Modal onClose={() => setVolunteer(false)}><FormCard kind="inquiry" campus={event.campusSlug ? bySlug.get(event.campusSlug) : undefined} onClose={() => setVolunteer(false)} /></Modal> : null}
   </>;
 }
 
@@ -1841,7 +1848,7 @@ function PrayerPage() {
 }
 
 const tithelyUrl = "https://give.tithe.ly/?formId=38e44ec6-bbde-428c-b073-df0309a7e479&context=modal";
-const giveOrder = ["ikeja", "london", "ifako", "ipaja", "abeokuta", "atlanta", "houston"];
+const giveOrder = ["ikeja", "london", "ifako", "ipaja", "abeokuta", "atlanta", "houston", "online"];
 
 function giveLabel(slug: string) {
   if (slug === "london") return "United Kingdom";
@@ -1930,7 +1937,7 @@ function GivePage({ path }: { path: string }) {
               <div><dt>Account number</dt><dd>0123456789</dd></div>
             </dl>
             <button className="btn btn-primary btn-block" type="button" onClick={copyDetails}>{copied ? "Copied" : "Copy Bank Details"}</button>
-          </> : slug === "global" || slug === "atlanta" || slug === "houston"
+          </> : slug === "global" || slug === "atlanta" || slug === "houston" || slug === "online"
             ? <a className="btn btn-primary btn-block" href={tithelyUrl} target="_blank" rel="noreferrer">Continue to Tithely <Arrow /></a>
             : <p className="info-card">Bank details for this campus will be shared by the campus.</p>}
         </div>

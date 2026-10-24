@@ -14,7 +14,27 @@ export const SUBMISSION_KINDS = [
   { title: "Zoe Online access", plural: "Zoe Online access requests", value: "online" },
 ] as const;
 
+export const SUBMISSION_CAMPUSES = [
+  { title: "Zoe Atlanta", shortName: "Atlanta", value: "atlanta" },
+  { title: "Zoe Abeokuta", shortName: "Abeokuta", value: "abeokuta" },
+  { title: "Zoe Houston", shortName: "Houston", value: "houston" },
+  { title: "Zoe Ikeja", shortName: "Ikeja", value: "ikeja" },
+  { title: "Zoe Ipaja", shortName: "Ipaja", value: "ipaja" },
+  { title: "Zoe London", shortName: "London", value: "london" },
+  { title: "Zoe Ifako", shortName: "Ifako", value: "ifako" },
+  { title: "Zoe Online Church", shortName: "Online Church", value: "online" },
+] as const;
+
 const kindTitle = (value?: string) => SUBMISSION_KINDS.find((kind) => kind.value === value)?.title ?? "Submission";
+
+const campusTitle = (value?: string) => {
+  if (!value || value === "none") return "No campus";
+  return (
+    SUBMISSION_CAMPUSES.find(
+      (campus) => campus.value === value.toLowerCase() || campus.shortName.toLowerCase() === value.toLowerCase(),
+    )?.title ?? value
+  );
+};
 
 // Submissions are written by the website with IDs under the private "submission."
 // path, so they never appear in the public dataset API. Everything the visitor sent
@@ -45,7 +65,18 @@ export const submissionType = defineType({
     defineField({ name: "name", title: "Name", type: "string", readOnly: true }),
     defineField({ name: "email", title: "Email", type: "string", readOnly: true }),
     defineField({ name: "phone", title: "Phone", type: "string", readOnly: true }),
-    defineField({ name: "campus", title: "Campus", type: "string", readOnly: true }),
+    defineField({
+      name: "campus",
+      title: "Campus",
+      type: "string",
+      options: {
+        list: [
+          ...SUBMISSION_CAMPUSES.map(({ title, value }) => ({ title, value })),
+          { title: "No campus / general", value: "none" },
+        ],
+      },
+      readOnly: true,
+    }),
     defineField({ name: "topic", title: "Topic", type: "string", readOnly: true, hidden: ({ document }) => !document?.topic }),
     defineField({ name: "region", title: "Campus or region", type: "string", readOnly: true, hidden: ({ document }) => !document?.region }),
     defineField({ name: "message", title: "Message / prayer request", type: "text", rows: 6, readOnly: true }),
@@ -72,13 +103,39 @@ export const submissionType = defineType({
     defineField({ name: "campusEmails", title: "Wants campus emails", type: "boolean", readOnly: true, hidden: ({ document }) => document?.kind !== "visit" }),
     defineField({ name: "consent", title: "Agreed to be contacted", type: "boolean", readOnly: true, hidden: ({ document }) => document?.kind !== "inquiry" }),
   ],
-  orderings: [{ title: "Newest first", name: "receivedDesc", by: [{ field: "receivedAt", direction: "desc" }] }],
+  orderings: [
+    {
+      title: "Campus, then submission type",
+      name: "campusKindDesc",
+      by: [
+        { field: "campus", direction: "asc" },
+        { field: "kind", direction: "asc" },
+        { field: "receivedAt", direction: "desc" },
+      ],
+    },
+    {
+      title: "Submission type, newest first",
+      name: "kindReceivedDesc",
+      by: [
+        { field: "kind", direction: "asc" },
+        { field: "receivedAt", direction: "desc" },
+      ],
+    },
+    {
+      title: "Newest first",
+      name: "receivedDesc",
+      by: [{ field: "receivedAt", direction: "desc" }],
+    },
+  ],
   preview: {
-    select: { name: "name", email: "email", kind: "kind", receivedAt: "receivedAt", status: "status" },
-    prepare: ({ name, email, kind, receivedAt, status }) => {
+    select: { name: "name", email: "email", kind: "kind", campus: "campus", receivedAt: "receivedAt", status: "status" },
+    prepare: ({ name, email, kind, campus, receivedAt, status }) => {
       const when = receivedAt ? new Date(receivedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) : "";
       const flag = status === "done" ? "✓ " : status === "inProgress" ? "… " : "● ";
-      return { title: `${flag}${name || email || "Anonymous"}`, subtitle: [kindTitle(kind), when].filter(Boolean).join(" · ") };
+      return {
+        title: `${flag}${name || email || "Anonymous"}`,
+        subtitle: [campusTitle(campus), kindTitle(kind), when].filter(Boolean).join(" · "),
+      };
     },
   },
 });
