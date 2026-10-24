@@ -1,5 +1,7 @@
 import "server-only";
+import { campuses } from "@/data/site";
 import { geocode } from "@/lib/geocode";
+import { distanceKm } from "@/lib/nearest-campus";
 import { isSanityConfigured } from "@/sanity/env";
 import { client } from "@/sanity/lib/client";
 import { urlForImage } from "@/sanity/lib/image";
@@ -72,14 +74,36 @@ function formatDateRange(start?: string, end?: string): string {
   return `${startDate.toLocaleDateString("en-US", opts)} – ${endDate.toLocaleDateString("en-US", opts)}`;
 }
 
-const UNPLACED = /announced|\btba\b|\btbd\b|online|virtual/i;
+const UNPLACED = /announced|\btba\b|\btbd\b|online|virtual|\bzoom\b|google\s*meet|youtube|livestream/i;
+const MAX_CAMPUS_EVENT_DRIFT_KM = 500;
 
 // Events store a map pin when an editor sets one; otherwise the address in
 // "Location" is geocoded (cached for a day) so every event can be placed.
+// When an event belongs to a physical campus, we use the campus's country as a
+// hint and fall back to the campus coordinates if geocoding fails or lands in a
+// completely different region.
 async function eventPoint(doc: EventDoc) {
   if (doc.geo?.lat != null && doc.geo?.lng != null) return { lat: doc.geo.lat, lng: doc.geo.lng };
+  const assignedCampus = doc.campusSlug && doc.campusSlug !== "online"
+    ? campuses.find((campus) => campus.slug === doc.campusSlug)
+    : undefined;
+  const campusFallback = assignedCampus ? { lat: assignedCampus.lat, lng: assignedCampus.lng } : null;
+
   if (!doc.location || UNPLACED.test(doc.location)) return null;
-  return geocode(doc.location, { broaden: true });
+
+  const countryHint =
+    assignedCampus?.country === "USA"
+      ? "USA"
+      : assignedCampus?.country === "UK"
+        ? "United Kingdom"
+        : assignedCampus?.country;
+
+  const point = await geocode(doc.location, { broaden: true, countryHint });
+  if (!point) return campusFallback;
+  if (campusFallback && distanceKm(point, campusFallback) > MAX_CAMPUS_EVENT_DRIFT_KM) {
+    return campusFallback;
+  }
+  return point;
 }
 
 const STATUSES = ["upcoming", "live", "past"] as const;
