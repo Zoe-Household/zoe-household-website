@@ -1238,7 +1238,7 @@ function CampusPage({ campus }: { campus: MergedCampus }) {
   const gallery = campus.gallery ?? [];
   const title = campusTitle(campus);
   const newHereHref = campus.newHereUrl || "https://churchq.io/login?utm_source=zoehousehold&utm_medium=website&utm_campaign=online_new_here";
-  const whatsappHref = campus.whatsappChannelUrl || "";
+  const whatsappHref = campus.whatsappChannelUrl || "https://whatsapp.com/channel/0029VbCI9wzJZg42BlWhDl12";
   const membershipTitle = campus.membershipClassTitle || "Next Membership Class";
   const membershipSchedule = campus.membershipClassSchedule || "Dates and registration details for the upcoming membership class will be shared here.";
   const membershipFlyer = campus.membershipClassFlyer || "/figma/about-vision-51f746.jpg";
@@ -1303,9 +1303,9 @@ function CampusPage({ campus }: { campus: MergedCampus }) {
           <div>
             <Label>I&apos;m new here</Label>
             <h2>New to Zoe Online Church?</h2>
-            <p>We&apos;re so glad you&apos;re here. Connect with us through the ChurchOS app so our team can welcome you personally, help you settle in, and walk with you.</p>
+            <p>We&apos;re so glad you&apos;re here. Connect with us through the ChurchQ app so our team can welcome you personally, help you settle in, and walk with you.</p>
           </div>
-          <a className="btn btn-dark" href={newHereHref} target="_blank" rel="noreferrer" data-track="online-new-here-band">I&apos;m New Here · Open ChurchOS <Arrow /></a>
+          <a className="btn btn-dark" href={newHereHref} target="_blank" rel="noreferrer" data-track="online-new-here-band">I&apos;m New Here · Open ChurchQ <Arrow /></a>
         </div>
       </section>
     ) : null}
@@ -1339,8 +1339,8 @@ function CampusPage({ campus }: { campus: MergedCampus }) {
             <article className="step-card">
               <span className="step-num">01</span>
               <h3>I&apos;m New Here</h3>
-              <p>First time streaming with us? Let us know through ChurchOS so we can welcome you and help you get connected.</p>
-              <a className="link-arrow" href={newHereHref} target="_blank" rel="noreferrer" data-track="online-new-here-card">Connect on ChurchOS <Arrow /></a>
+              <p>First time streaming with us? Let us know through ChurchQ so we can welcome you and help you get connected.</p>
+              <a className="link-arrow" href={newHereHref} target="_blank" rel="noreferrer" data-track="online-new-here-card">Connect on ChurchQ <Arrow /></a>
             </article>
             <article className="step-card">
               <span className="step-num">02</span>
@@ -2339,7 +2339,7 @@ function TermsPage() {
     </LegalSection>
 
     <LegalSection heading="Third-Party Links and Services">
-      <p>The site links to and embeds third-party services such as YouTube, Spotify, the Bible App, Substack, Google Maps, Tithely, and ChurchOS. We do not control these services and are not responsible for their content, availability, or practices. Your use of them is governed by their own terms and privacy policies.</p>
+      <p>The site links to and embeds third-party services such as YouTube, Spotify, the Bible App, Substack, Google Maps, Tithely, and ChurchQ. We do not control these services and are not responsible for their content, availability, or practices. Your use of them is governed by their own terms and privacy policies.</p>
     </LegalSection>
 
     <LegalSection heading="Disclaimers">

@@ -51,7 +51,7 @@ export const campusType = defineType({
     defineField({ name: "membershipClassSchedule", title: "Next membership class date / details", type: "string", description: 'e.g. "Next class date to be announced" or "First Sunday of the month at 6:00 PM EST".' }),
     defineField({ name: "membershipClassUrl", title: "Membership class registration URL", type: "url", description: "Optional registration link for the next membership class." }),
     defineField({ name: "membershipClassFlyer", title: "Next membership class flyer", type: "image", options: { hotspot: true }, description: "Flyer image for the next membership class." }),
-    defineField({ name: "newHereUrl", title: "I'm New Here (ChurchOS tracking link)", type: "url", description: "ChurchOS link for first-time visitors so clicks and numbers are tracked." }),
+    defineField({ name: "newHereUrl", title: "I'm New Here (ChurchQ tracking link)", type: "url", description: "ChurchQ link for first-time visitors so clicks and numbers are tracked." }),
     defineField({
       name: "activities",
       title: "Activities & recurring programs",
