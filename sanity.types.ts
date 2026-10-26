@@ -23,7 +23,14 @@ export type Submission = {
   _rev: string;
   status?: "new" | "inProgress" | "done";
   notes?: string;
-  kind?: "prayer" | "inquiry" | "visit" | "children" | "reminder" | "online";
+  kind?:
+    | "prayer"
+    | "inquiry"
+    | "visit"
+    | "children"
+    | "reminder"
+    | "online"
+    | "newsletter";
   receivedAt?: string;
   name?: string;
   email?: string;
@@ -36,6 +43,7 @@ export type Submission = {
     | "ipaja"
     | "london"
     | "ifako"
+    | "online"
     | "none";
   topic?: string;
   region?: string;
@@ -156,6 +164,25 @@ export type Campus = {
     crop?: SanityImageCrop;
     _type: "image";
   };
+  whatsappChannelUrl?: string;
+  membershipClassTitle?: string;
+  membershipClassSchedule?: string;
+  membershipClassUrl?: string;
+  membershipClassFlyer?: {
+    asset?: SanityImageAssetReference;
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    _type: "image";
+  };
+  newHereUrl?: string;
+  activities?: Array<{
+    title?: string;
+    schedule?: string;
+    description?: string;
+    link?: string;
+    _key: string;
+  }>;
   gallery?: Array<{
     asset?: SanityImageAssetReference;
     media?: unknown;
@@ -359,7 +386,7 @@ export type EVENTS_QUERY_RESULT = Array<{
 
 // Source: ../sanity/lib/queries.ts
 // Variable: CAMPUSES_QUERY
-// Query: *[_type == "campus"] | order(coalesce(order, 50) asc){  "slug": slug.current,  name,  shortName,  place,  pastor,  phone,  email,  instagram,  address,  lat,  lng,  verse,  verseRef,  whatToExpect,  gettingThere,  parking,  languages,  services[]{ name, schedule, address },  heroImage,  gallery[]{ ..., "alt": alt }}
+// Query: *[_type == "campus"] | order(coalesce(order, 50) asc){  "slug": slug.current,  name,  shortName,  place,  pastor,  phone,  email,  instagram,  address,  lat,  lng,  verse,  verseRef,  whatToExpect,  gettingThere,  parking,  languages,  services[]{ name, schedule, address },  whatsappChannelUrl,  membershipClassTitle,  membershipClassSchedule,  membershipClassUrl,  membershipClassFlyer,  newHereUrl,  activities[]{ title, schedule, description, link },  heroImage,  gallery[]{ ..., "alt": alt }}
 export type CAMPUSES_QUERY_RESULT = Array<{
   slug: string | null;
   name: string | null;
@@ -382,6 +409,24 @@ export type CAMPUSES_QUERY_RESULT = Array<{
     name: string | null;
     schedule: string | null;
     address: string | null;
+  }> | null;
+  whatsappChannelUrl: string | null;
+  membershipClassTitle: string | null;
+  membershipClassSchedule: string | null;
+  membershipClassUrl: string | null;
+  membershipClassFlyer: {
+    asset?: SanityImageAssetReference;
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    _type: "image";
+  } | null;
+  newHereUrl: string | null;
+  activities: Array<{
+    title: string | null;
+    schedule: string | null;
+    description: string | null;
+    link: string | null;
   }> | null;
   heroImage: {
     asset?: SanityImageAssetReference;

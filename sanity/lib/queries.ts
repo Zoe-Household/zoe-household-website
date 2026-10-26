@@ -38,6 +38,13 @@ export const CAMPUSES_QUERY = groq`*[_type == "campus"] | order(coalesce(order, 
   parking,
   languages,
   services[]{ name, schedule, address },
+  whatsappChannelUrl,
+  membershipClassTitle,
+  membershipClassSchedule,
+  membershipClassUrl,
+  membershipClassFlyer,
+  newHereUrl,
+  activities[]{ title, schedule, description, link },
   heroImage,
   gallery[]{ ..., "alt": alt }
 }`;

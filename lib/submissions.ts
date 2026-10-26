@@ -15,7 +15,7 @@ import { writeClient } from "@/sanity/lib/write-client";
  * submission also triggers an admin email via Resend when RESEND_API_KEY is set.
  */
 
-export const FORM_KINDS = ["visit", "children", "reminder", "online", "prayer", "inquiry"] as const;
+export const FORM_KINDS = ["visit", "children", "reminder", "online", "newsletter", "prayer", "inquiry"] as const;
 export type FormKind = (typeof FORM_KINDS)[number];
 
 const emailField = z.string().trim().min(1, "Email is required").email("Enter a valid email address");
@@ -51,6 +51,10 @@ const schemasByKind = {
     name: z.string().trim().max(120).optional().or(z.literal("")),
     email: emailField,
     phone: phoneField,
+  }),
+  newsletter: baseSchema.extend({
+    name: z.string().trim().max(120).optional().or(z.literal("")),
+    email: emailField,
   }),
   prayer: baseSchema.extend({
     name: nameField,
@@ -93,6 +97,7 @@ const recipientsByKind: Record<FormKind, string | undefined> = {
   children: process.env.NOTIFY_EMAIL_CHILDREN ?? process.env.NOTIFY_EMAIL_DEFAULT,
   reminder: process.env.NOTIFY_EMAIL_REMINDER ?? process.env.NOTIFY_EMAIL_DEFAULT,
   online: process.env.NOTIFY_EMAIL_ONLINE ?? process.env.NOTIFY_EMAIL_DEFAULT,
+  newsletter: process.env.NOTIFY_EMAIL_NEWSLETTER ?? process.env.NOTIFY_EMAIL_DEFAULT,
   prayer: process.env.NOTIFY_EMAIL_PRAYER ?? process.env.NOTIFY_EMAIL_DEFAULT,
   inquiry: process.env.NOTIFY_EMAIL_INQUIRY ?? process.env.NOTIFY_EMAIL_DEFAULT,
 };
@@ -102,6 +107,7 @@ const kindLabels: Record<FormKind, string> = {
   children: "Zoe Arrows Children Pre-Registration",
   reminder: "Service Reminder Signup",
   online: "Zoe Online Access Request",
+  newsletter: "Global Newsletter Signup",
   prayer: "Prayer Request",
   inquiry: "General Inquiry",
 };

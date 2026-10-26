@@ -46,6 +46,30 @@ export const campusType = defineType({
       ],
     }),
     defineField({ name: "heroImage", title: "Hero / card image", type: "image", options: { hotspot: true } }),
+    defineField({ name: "whatsappChannelUrl", title: "Zoe WhatsApp Channel URL", type: "url", description: "Link to the Zoe WhatsApp channel (used in Join the Online Community)." }),
+    defineField({ name: "membershipClassTitle", title: "Next membership class title", type: "string", description: 'e.g. "Zoe Membership Class" (used in Join the Online Community).' }),
+    defineField({ name: "membershipClassSchedule", title: "Next membership class date / details", type: "string", description: 'e.g. "Next class date to be announced" or "First Sunday of the month at 6:00 PM EST".' }),
+    defineField({ name: "membershipClassUrl", title: "Membership class registration URL", type: "url", description: "Optional registration link for the next membership class." }),
+    defineField({ name: "membershipClassFlyer", title: "Next membership class flyer", type: "image", options: { hotspot: true }, description: "Flyer image for the next membership class." }),
+    defineField({ name: "newHereUrl", title: "I'm New Here (ChurchOS tracking link)", type: "url", description: "ChurchOS link for first-time visitors so clicks and numbers are tracked." }),
+    defineField({
+      name: "activities",
+      title: "Activities & recurring programs",
+      type: "array",
+      description: "Weekly or recurring activities for this campus.",
+      of: [
+        defineArrayMember({
+          type: "object",
+          fields: [
+            defineField({ name: "title", title: "Activity title", type: "string", validation: (rule) => rule.required() }),
+            defineField({ name: "schedule", title: "Date / time schedule", type: "string", description: 'e.g. "Mondays at 7:30 PM EST" or "Schedule to be announced".' }),
+            defineField({ name: "description", title: "Description", type: "text", rows: 2 }),
+            defineField({ name: "link", title: "Join / info link (optional)", type: "url" }),
+          ],
+          preview: { select: { title: "title", subtitle: "schedule" } },
+        }),
+      ],
+    }),
     defineField({
       name: "gallery",
       title: "Photo gallery",

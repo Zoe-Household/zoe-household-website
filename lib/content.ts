@@ -43,6 +43,13 @@ type CampusDoc = {
   parking?: string;
   languages?: string;
   services?: { name?: string; schedule?: string; address?: string }[];
+  whatsappChannelUrl?: string;
+  membershipClassTitle?: string;
+  membershipClassSchedule?: string;
+  membershipClassUrl?: string;
+  membershipClassFlyer?: SanityImage;
+  newHereUrl?: string;
+  activities?: { title?: string; schedule?: string; description?: string; link?: string }[];
   heroImage?: SanityImage;
   gallery?: (SanityImage & { alt?: string })[];
 };
@@ -140,6 +147,14 @@ function mapCampuses(docs: CampusDoc[]): Record<string, CampusContent> {
     const services = (doc.services ?? [])
       .filter((service) => service.name)
       .map((service) => ({ name: service.name ?? "", schedule: service.schedule ?? "", address: service.address ?? "" }));
+    const activities = (doc.activities ?? [])
+      .filter((activity) => activity.title)
+      .map((activity) => ({
+        title: activity.title ?? "",
+        schedule: activity.schedule ?? "",
+        description: activity.description || undefined,
+        link: activity.link || undefined,
+      }));
     out[doc.slug] = {
       heroImage: urlForImage(doc.heroImage, 1600),
       gallery: gallery.length ? gallery : undefined,
@@ -156,6 +171,13 @@ function mapCampuses(docs: CampusDoc[]): Record<string, CampusContent> {
       parking: doc.parking || undefined,
       languages: doc.languages || undefined,
       services: services.length ? services : undefined,
+      whatsappChannelUrl: doc.whatsappChannelUrl || undefined,
+      membershipClassTitle: doc.membershipClassTitle || undefined,
+      membershipClassSchedule: doc.membershipClassSchedule || undefined,
+      membershipClassUrl: doc.membershipClassUrl || undefined,
+      membershipClassFlyer: urlForImage(doc.membershipClassFlyer, 1200),
+      newHereUrl: doc.newHereUrl || undefined,
+      activities: activities.length ? activities : undefined,
     };
   }
   return out;

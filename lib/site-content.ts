@@ -27,6 +27,13 @@ export type EventItem = {
   lng?: number | null;
 };
 
+export type CampusActivity = {
+  title: string;
+  schedule: string;
+  description?: string;
+  link?: string;
+};
+
 export type CampusContent = {
   heroImage?: string;
   gallery?: string[];
@@ -43,6 +50,13 @@ export type CampusContent = {
   parking?: string;
   languages?: string;
   services?: { name: string; schedule: string; address: string }[];
+  whatsappChannelUrl?: string;
+  membershipClassTitle?: string;
+  membershipClassSchedule?: string;
+  membershipClassUrl?: string;
+  membershipClassFlyer?: string;
+  newHereUrl?: string;
+  activities?: CampusActivity[];
 };
 
 export type SiteContent = {

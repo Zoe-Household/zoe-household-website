@@ -10,7 +10,7 @@ import { beliefs, Campus, campuses, pastorDolapoBio, socialLinks } from "@/data/
 import { eventPhase, formatKilometers, rankEvents, relativeLabel, type RankedEvent } from "@/lib/event-order";
 import type { LibraryVideo } from "@/lib/library";
 import type { Point } from "@/lib/nearest-campus";
-import { EMPTY_CONTENT, fallbackEvents, fallbackMoments, type EventItem, type SiteContent } from "@/lib/site-content";
+import { EMPTY_CONTENT, fallbackEvents, fallbackMoments, type CampusActivity, type EventItem, type SiteContent } from "@/lib/site-content";
 
 type MergedCampus = Campus & {
   gallery?: string[];
@@ -20,6 +20,13 @@ type MergedCampus = Campus & {
   gettingThere?: string;
   parking?: string;
   languages?: string;
+  whatsappChannelUrl?: string;
+  membershipClassTitle?: string;
+  membershipClassSchedule?: string;
+  membershipClassUrl?: string;
+  membershipClassFlyer?: string;
+  newHereUrl?: string;
+  activities?: CampusActivity[];
 };
 
 type ResolvedContent = {
@@ -60,6 +67,13 @@ function resolveContent(content: SiteContent): ResolvedContent {
       image: o.heroImage ?? base.image,
       services: o.services && o.services.length ? o.services : base.services,
       gallery: o.gallery,
+      whatsappChannelUrl: o.whatsappChannelUrl,
+      membershipClassTitle: o.membershipClassTitle,
+      membershipClassSchedule: o.membershipClassSchedule,
+      membershipClassUrl: o.membershipClassUrl,
+      membershipClassFlyer: o.membershipClassFlyer,
+      newHereUrl: o.newHereUrl,
+      activities: o.activities,
     };
   });
   const bySlug = new Map(merged.map((campus) => [campus.slug, campus]));
@@ -1098,13 +1112,116 @@ function VisitPage() {
   </>;
 }
 
+const defaultOnlineActivities: CampusActivity[] = [
+  {
+    title: "Sunday Online Gathering",
+    schedule: "Sundays · Schedule updated regularly",
+    description: "Stream worship, prayer, and the Word live with the Zoe Online Church family.",
+  },
+  {
+    title: "Online Prayer Stretch",
+    schedule: "Weekly · Schedule updated regularly",
+    description: "Join the online household in corporate prayer and intercession throughout the week.",
+  },
+  {
+    title: "Online Bible Study & Word Share",
+    schedule: "Midweek · Schedule updated regularly",
+    description: "Dig deeper into Scripture, ask questions, and grow in grace alongside other believers.",
+  },
+  {
+    title: "Zoe Membership Class",
+    schedule: "Monthly · Schedule updated regularly",
+    description: "Learn the vision, beliefs, and culture of Zoe Household and take your next step into the family.",
+  },
+];
+
+function GlobalNewsletterSignup({ campusSlug }: { campusSlug?: string }) {
+  const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const subscribe = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+    const data = new FormData(event.currentTarget);
+    if (data.get("website")) {
+      setSent(true);
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await postSubmission({
+        kind: "newsletter",
+        campus: campusSlug ?? "online",
+        name: data.get("name") ?? "",
+        email: data.get("email") ?? "",
+      });
+      setSent(true);
+    } catch (problem) {
+      setError(problem instanceof Error ? problem.message : "We couldn't reach the server. Check your connection and try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return <section id="global-newsletter" className="section online is-raised">
+    <div className="container online-grid">
+      <div>
+        <Label>Global newsletter</Label>
+        <h2>Stay Connected With <span className="hl">Zoe Global</span></h2>
+        <p>Sign up for the Zoe Household global newsletter to receive ministry updates, upcoming global gatherings, devotionals, and announcements right in your inbox.</p>
+      </div>
+      {sent ? (
+        <div className="form-panel is-sent" role="status">
+          <h3>You&apos;re subscribed</h3>
+          <p>Thank you for signing up for the Zoe Household global newsletter.</p>
+        </div>
+      ) : (
+        <form className="form-panel" onSubmit={subscribe}>
+          <h3>Join the Global Newsletter</h3>
+          <p>Enter your details below to receive updates from across the Zoe Household.</p>
+          <input className="form-honeypot" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" />
+          <label>Full name<input name="name" placeholder="Enter full name" autoComplete="name" /></label>
+          <label>Email address<input name="email" type="email" required placeholder="Enter email address" autoComplete="email" /></label>
+          {error ? <p className="form-error" role="alert">{error}</p> : null}
+          <button className="btn btn-primary btn-block" type="submit" disabled={submitting}>{submitting ? "Subscribing…" : "Sign Up for Newsletter"}</button>
+        </form>
+      )}
+    </div>
+  </section>;
+}
+
 function CampusEvents({ campus, title }: { campus: MergedCampus; title: string }) {
   const { events } = useSite();
-  if (!events.some((event) => event.campusSlug === campus.slug)) return null;
-  return <section className="section campus-events">
+  const isOnline = campus.slug === "online";
+  const hasCampusEvents = events.some((event) => event.campusSlug === campus.slug);
+  const activities = campus.activities && campus.activities.length ? campus.activities : isOnline ? defaultOnlineActivities : [];
+
+  if (!hasCampusEvents && !activities.length) return null;
+
+  return <section id="activities-events" className="section campus-events">
     <div className="container">
-      <SectionHead label="Events" title={<>What's Happening at <span className="hl">Zoe {title}</span></>} body="Only gatherings assigned to this campus. The next one is first, then the rest from upcoming to past." />
-      <EventsShowcase campusSlug={campus.slug} />
+      <SectionHead
+        label={isOnline ? "Activities & events" : "Events"}
+        title={isOnline ? <>Activities &amp; Events at <span className="hl">Zoe {title}</span></> : <>What&apos;s Happening at <span className="hl">Zoe {title}</span></>}
+        body={isOnline
+          ? "Join our recurring online activities and upcoming gatherings throughout the week."
+          : "Only gatherings assigned to this campus. The next one is first, then the rest from upcoming to past."}
+      />
+      {activities.length ? (
+        <div className="step-grid online-activity-grid">
+          {activities.map((activity, index) => (
+            <article className="step-card" key={`${activity.title}-${index}`}>
+              <span className="step-num">{String(index + 1).padStart(2, "0")}</span>
+              <span className="badge">{activity.schedule || "Schedule to be announced"}</span>
+              <h3>{activity.title}</h3>
+              {activity.description ? <p>{activity.description}</p> : null}
+              {activity.link ? <a className="link-arrow" href={activity.link} target="_blank" rel="noreferrer">Join / Details <Arrow /></a> : null}
+            </article>
+          ))}
+        </div>
+      ) : null}
+      {hasCampusEvents ? <EventsShowcase campusSlug={campus.slug} /> : null}
     </div>
   </section>;
 }
@@ -1112,6 +1229,7 @@ function CampusEvents({ campus, title }: { campus: MergedCampus; title: string }
 function CampusPage({ campus }: { campus: MergedCampus }) {
   const { campusesOrdered } = useSite();
   const [modal, setModal] = useState<"children" | "visit" | "reminder" | null>(null);
+  const isOnline = campus.slug === "online";
   const known = hasKnownAddress(campus);
   const maps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(campus.address)}`;
   const embed = `https://www.google.com/maps?q=${encodeURIComponent(campus.address)}&output=embed`;
@@ -1119,6 +1237,11 @@ function CampusPage({ campus }: { campus: MergedCampus }) {
   const others = campusesOrdered.filter((item) => item.slug !== campus.slug);
   const gallery = campus.gallery ?? [];
   const title = campusTitle(campus);
+  const newHereHref = campus.newHereUrl || "https://churchq.io/login?utm_source=zoehousehold&utm_medium=website&utm_campaign=online_new_here";
+  const whatsappHref = campus.whatsappChannelUrl || "";
+  const membershipTitle = campus.membershipClassTitle || "Next Membership Class";
+  const membershipSchedule = campus.membershipClassSchedule || "Dates and registration details for the upcoming membership class will be shared here.";
+  const membershipFlyer = campus.membershipClassFlyer || "/figma/about-vision-51f746.jpg";
 
   return <div className="campus-page" key={campus.slug}>
     <section className="campus-hero">
@@ -1128,10 +1251,14 @@ function CampusPage({ campus }: { campus: MergedCampus }) {
         <h1>Zoe {title}</h1>
         <p className="lede">You&apos;re welcome here. Join us at Zoe {campus.shortName} as we gather to worship Jesus, hear the Word, and grow together as a household of faith.</p>
         <div className="actions">
-          <a className="btn btn-primary" href="#plan-visit">Plan Your Visit <Arrow /></a>
-          {known
-            ? <a className="btn btn-glass" href={maps} target="_blank" rel="noreferrer"><PinIcon /> Get Directions</a>
-            : <Link className="btn btn-glass" href="/sermons"><PlayIcon /> Watch Online</Link>}
+          <a className="btn btn-primary" href="#plan-visit">{isOnline ? "Join the Online Community" : "Plan Your Visit"} <Arrow /></a>
+          {isOnline ? (
+            <a className="btn btn-glass" href={newHereHref} target="_blank" rel="noreferrer" data-track="online-new-here-hero">I&apos;m New Here <Arrow /></a>
+          ) : known ? (
+            <a className="btn btn-glass" href={maps} target="_blank" rel="noreferrer"><PinIcon /> Get Directions</a>
+          ) : (
+            <Link className="btn btn-glass" href="/sermons"><PlayIcon /> Watch Online</Link>
+          )}
         </div>
       </div>
       <div className="container">
@@ -1141,15 +1268,17 @@ function CampusPage({ campus }: { campus: MergedCampus }) {
             <dd>{isPending(first.schedule) ? "Time to be announced" : first.schedule}</dd>
           </div>
           <div>
-            <dt><PinIcon />{campus.slug === "online" ? "Where we gather" : "Location"}</dt>
-            <dd>{known ? campus.address : campus.slug === "online" ? "Streaming online" : "Location to be announced"}</dd>
+            <dt><PinIcon />{isOnline ? "Where we gather" : "Location"}</dt>
+            <dd>{known ? campus.address : isOnline ? "Streaming online" : "Location to be announced"}</dd>
           </div>
           <div>
-            {campus.pastor
-              ? <><dt><UserIcon />Campus Pastor</dt><dd>{campus.pastor}</dd></>
-              : campus.phone
-                ? <><dt><PhoneIcon />Call the campus</dt><dd><a href={`tel:${campus.phone.replace(/\s|-/g, "")}`}>{campus.phone}</a></dd></>
-                : <><dt><UserIcon />Questions</dt><dd><button type="button" onClick={() => setModal("visit")}>Send us a note</button></dd></>}
+            {campus.pastor ? (
+              <><dt><UserIcon />Campus Pastor</dt><dd>{campus.pastor}</dd></>
+            ) : campus.phone ? (
+              <><dt><PhoneIcon />Call the campus</dt><dd><a href={`tel:${campus.phone.replace(/\s|-/g, "")}`}>{campus.phone}</a></dd></>
+            ) : (
+              <><dt><UserIcon />Questions</dt><dd><button type="button" onClick={() => setModal("visit")}>Send us a note</button></dd></>
+            )}
           </div>
         </dl>
       </div>
@@ -1157,17 +1286,34 @@ function CampusPage({ campus }: { campus: MergedCampus }) {
 
     <section className="section campus-verse">
       <div className="container narrow">
-        <Label center>Verse of the month</Label>
+        <Label center>{isOnline ? "Verse of the month · Read during online announcements" : "Verse of the month"}</Label>
         <blockquote>“{campus.verse}”</blockquote>
         <cite>— {campus.verseRef}</cite>
-        <small>A word to carry with us throughout the month.</small>
+        <small>
+          {isOnline
+            ? "This is the Verse of the Month read aloud to our online members during announcements — a word to confess and carry together throughout the month."
+            : "A word to carry with us throughout the month."}
+        </small>
       </div>
     </section>
+
+    {isOnline ? (
+      <section id="new-here" className="band band-lime">
+        <div className="container band-inner">
+          <div>
+            <Label>I&apos;m new here</Label>
+            <h2>New to Zoe Online Church?</h2>
+            <p>We&apos;re so glad you&apos;re here. Connect with us through the ChurchOS app so our team can welcome you personally, help you settle in, and walk with you.</p>
+          </div>
+          <a className="btn btn-dark" href={newHereHref} target="_blank" rel="noreferrer" data-track="online-new-here-band">I&apos;m New Here · Open ChurchOS <Arrow /></a>
+        </div>
+      </section>
+    ) : null}
 
     {(campus.whatToExpect || campus.gettingThere || campus.parking || campus.languages || campus.email || campus.instagram) ? (
       <section className="section campus-know">
         <div className="container">
-          <SectionHead label="Good to know" title={<>Your First Visit to <span className="hl">Zoe {title}</span></>} body={campus.whatToExpect ?? undefined} />
+          <SectionHead label="Good to know" title={isOnline ? <>Welcome to <span className="hl">Zoe {title}</span></> : <>Your First Visit to <span className="hl">Zoe {title}</span></>} body={campus.whatToExpect ?? undefined} />
           <dl className="campus-facts">
             {campus.languages ? <div><dt><UserIcon />Service language</dt><dd>{campus.languages}</dd></div> : null}
             {campus.parking ? <div><dt><PinIcon />Parking</dt><dd>{campus.parking}</dd></div> : null}
@@ -1180,6 +1326,44 @@ function CampusPage({ campus }: { campus: MergedCampus }) {
     ) : null}
 
     <CampusEvents campus={campus} title={title} />
+
+    {isOnline ? (
+      <section id="connect-grow" className="section is-raised">
+        <div className="container">
+          <SectionHead
+            label="Connect & grow"
+            title={<>Ways to Connect <span className="hl">and Grow</span></>}
+            body="Being part of Zoe Online Church is more than watching a broadcast — it's sharing life, growing in the Word, and walking with a spiritual family."
+          />
+          <div className="step-grid">
+            <article className="step-card">
+              <span className="step-num">01</span>
+              <h3>I&apos;m New Here</h3>
+              <p>First time streaming with us? Let us know through ChurchOS so we can welcome you and help you get connected.</p>
+              <a className="link-arrow" href={newHereHref} target="_blank" rel="noreferrer" data-track="online-new-here-card">Connect on ChurchOS <Arrow /></a>
+            </article>
+            <article className="step-card">
+              <span className="step-num">02</span>
+              <h3>Join the WhatsApp Channel</h3>
+              <p>Stay in the loop with daily encouragement, live stream links, prayer prompts, and family announcements.</p>
+              <a className="link-arrow" href={whatsappHref || "#plan-visit"} target={whatsappHref ? "_blank" : undefined} rel={whatsappHref ? "noreferrer" : undefined}>Join WhatsApp Channel <Arrow /></a>
+            </article>
+            <article className="step-card">
+              <span className="step-num">03</span>
+              <h3>Membership &amp; Discipleship</h3>
+              <p>Take the next step from viewer to family member through our online membership class and midweek teaching.</p>
+              <a className="link-arrow" href="#plan-visit">See next membership class <Arrow /></a>
+            </article>
+            <article className="step-card">
+              <span className="step-num">04</span>
+              <h3>Prayer &amp; the Word</h3>
+              <p>Grow through the Zoe Devotional, our Bible reading plan, and a prayer team ready to stand with you in faith.</p>
+              <Link className="link-arrow" href="/prayer">Share a prayer request <Arrow /></Link>
+            </article>
+          </div>
+        </div>
+      </section>
+    ) : null}
 
     {gallery.length ? (
       <section className="section campus-gallery">
@@ -1207,11 +1391,11 @@ function CampusPage({ campus }: { campus: MergedCampus }) {
                 <span className="badge">{service.name}</span>
                 <ul className="meta-list">
                   <li><ClockIcon />{isPending(service.schedule) ? "Time to be announced" : service.schedule}</li>
-                  <li><PinIcon />{serviceKnown ? service.address : campus.slug === "online" ? "Streaming online" : "Location to be announced"}</li>
+                  <li><PinIcon />{serviceKnown ? service.address : isOnline ? "Streaming online" : "Location to be announced"}</li>
                 </ul>
                 {serviceKnown
                   ? <a className="link-arrow" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(service.address)}`} target="_blank" rel="noreferrer">Get directions <Arrow /></a>
-                  : campus.slug === "online"
+                  : isOnline
                     ? <a className="link-arrow" href={socialLinks.youtube} target="_blank" rel="noreferrer">Watch on YouTube <Arrow /></a>
                     : <span className="muted">Directions will be shared once the location is set.</span>}
               </article>;
@@ -1221,7 +1405,7 @@ function CampusPage({ campus }: { campus: MergedCampus }) {
           </div>
           {known ? <div className="gather-map">
             <iframe title={`Map of Zoe ${campus.shortName}`} src={embed} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-          </div> : campus.slug === "online" ? <div className="gather-map is-empty">
+          </div> : isOnline ? <div className="gather-map is-empty">
             <PlayIcon />
             <h3>Stream from anywhere</h3>
             <p>Gather with Zoe {campus.shortName} from wherever you are. Service times and streaming details will be shared here as they are released.</p>
@@ -1236,34 +1420,96 @@ function CampusPage({ campus }: { campus: MergedCampus }) {
       </div>
     </section>
 
-    <section className="section arrows">
-      <div className="container arrows-grid">
-        <figure className="arrows-media">
-          <img src="/figma/arrows-atlanta.jpg" alt="A parent and child at Zoe Arrows" loading="lazy" />
-          <figcaption>Zoe Arrows</figcaption>
-        </figure>
-        <div className="arrows-copy">
-          <Label>For your family</Label>
-          <h2>Your Children Are <span className="hl">Welcome Too</span></h2>
-          <p>Zoe Arrows is our children&apos;s ministry, created to help your kids encounter Jesus and grow in their faith while you enjoy the main gathering.</p>
-          <div className="info-card">
-            <h3>A simple check-in</h3>
-            <p>Children are checked in after praise and worship, during the announcements, before the preaching begins.</p>
+    {!isOnline ? (
+      <section className="section arrows">
+        <div className="container arrows-grid">
+          <figure className="arrows-media">
+            <img src="/figma/arrows-atlanta.jpg" alt="A parent and child at Zoe Arrows" loading="lazy" />
+            <figcaption>Zoe Arrows</figcaption>
+          </figure>
+          <div className="arrows-copy">
+            <Label>For your family</Label>
+            <h2>Your Children Are <span className="hl">Welcome Too</span></h2>
+            <p>Zoe Arrows is our children&apos;s ministry, created to help your kids encounter Jesus and grow in their faith while you enjoy the main gathering.</p>
+            <div className="info-card">
+              <h3>A simple check-in</h3>
+              <p>Children are checked in after praise and worship, during the announcements, before the preaching begins.</p>
+            </div>
+            <div className="actions">
+              <button className="btn btn-primary" type="button" onClick={() => setModal("children")}>Register Your Children <Arrow /></button>
+            </div>
+            <small>Registering ahead of time helps speed up check-in when you arrive.</small>
           </div>
-          <div className="actions">
-            <button className="btn btn-primary" type="button" onClick={() => setModal("children")}>Register Your Children <Arrow /></button>
-          </div>
-          <small>Registering ahead of time helps speed up check-in when you arrive.</small>
         </div>
-      </div>
-    </section>
+      </section>
+    ) : null}
+
+    {isOnline ? (
+      <section id="watch-parties" className="section">
+        <div className="container">
+          <div className="watch-party-banner">
+            <div>
+              <span className="badge is-near">Coming soon</span>
+              <h2>Zoe Online <span className="hl">Watch Parties</span></h2>
+              <p>Soon you&apos;ll be able to host or join a Zoe Online Watch Party in your city or home — gathering with believers near you to stream worship and the Word together.</p>
+            </div>
+            <div className="watch-party-actions">
+              <button className="btn btn-glass" type="button" onClick={() => setModal("visit")}>Notify Me When Watch Parties Launch <Arrow /></button>
+            </div>
+          </div>
+        </div>
+      </section>
+    ) : null}
 
     <section id="plan-visit" className="section is-raised">
       <div className="container">
-        <SectionHead label="Plan your visit" title={<>Planning Your <span className="hl">Visit?</span></>} body={`Everything you need for your first visit to Zoe ${campus.shortName}, all in one place.`} />
-        <PlanSteps campus={campus} onOpen={setModal} />
+        {isOnline ? (
+          <>
+            <SectionHead
+              label="Join the online community"
+              title={<>Join the <span className="hl">Online Community</span></>}
+              body="Stay connected throughout the week through the Zoe WhatsApp Channel and take your next step with our upcoming Membership Class."
+            />
+            <div className="resource-grid online-community-grid">
+              <article className="resource-card is-teal">
+                <span className="badge">Zoe WhatsApp Channel</span>
+                <h3>Join the Zoe WhatsApp Channel</h3>
+                <p>Get instant updates, livestream links, announcements, and daily encouragement with the global Zoe Online family.</p>
+                {whatsappHref ? (
+                  <a className="btn btn-primary" href={whatsappHref} target="_blank" rel="noreferrer">Join WhatsApp Channel <Arrow /></a>
+                ) : (
+                  <button className="btn btn-primary" type="button" onClick={() => setModal("reminder")}>Get WhatsApp Channel Link <Arrow /></button>
+                )}
+              </article>
+              <article className="online-flyer-card">
+                <div className="online-flyer-media">
+                  <img src={membershipFlyer} alt={membershipTitle} loading="lazy" />
+                  <span className="badge is-live">Next Membership Class</span>
+                </div>
+                <div className="online-flyer-body">
+                  <h3>{membershipTitle}</h3>
+                  <p>{membershipSchedule}</p>
+                  <div className="actions">
+                    {campus.membershipClassUrl ? (
+                      <a className="btn btn-primary" href={campus.membershipClassUrl} target="_blank" rel="noreferrer">Register for Class <Arrow /></a>
+                    ) : (
+                      <button className="btn btn-primary" type="button" onClick={() => setModal("visit")}>Register Interest <Arrow /></button>
+                    )}
+                  </div>
+                </div>
+              </article>
+            </div>
+          </>
+        ) : (
+          <>
+            <SectionHead label="Plan your visit" title={<>Planning Your <span className="hl">Visit?</span></>} body={`Everything you need for your first visit to Zoe ${campus.shortName}, all in one place.`} />
+            <PlanSteps campus={campus} onOpen={setModal} />
+          </>
+        )}
       </div>
     </section>
+
+    {isOnline ? <GlobalNewsletterSignup campusSlug={campus.slug} /> : null}
 
     <section className="section more-campuses">
       <div className="container">

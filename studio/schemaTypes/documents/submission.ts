@@ -12,6 +12,7 @@ export const SUBMISSION_KINDS = [
   { title: "Zoe Arrows pre-registration", plural: "Zoe Arrows pre-registrations", value: "children" },
   { title: "Service reminder signup", plural: "Service reminder signups", value: "reminder" },
   { title: "Zoe Online access", plural: "Zoe Online access requests", value: "online" },
+  { title: "Global newsletter signup", plural: "Global newsletter signups", value: "newsletter" },
 ] as const;
 
 export const SUBMISSION_CAMPUSES = [
