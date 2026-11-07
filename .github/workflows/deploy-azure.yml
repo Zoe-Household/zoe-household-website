@@ -68,7 +68,7 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm typecheck
-          rm -rf node_modules
+          rm -rf node_modules studio
 
       - name: Build and Deploy to Azure Static Web Apps
         id: deploy
@@ -80,8 +80,6 @@ jobs:
           app_location: "/"
           api_location: ""
           output_location: ""
-          production_branch: "main"
-          deployment_environment: ${{ (github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'Production')) && '' || 'staging' }}
         env:
           NEXT_PUBLIC_SANITY_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_SANITY_PROJECT_ID }}
           NEXT_PUBLIC_SANITY_DATASET: ${{ secrets.NEXT_PUBLIC_SANITY_DATASET }}
