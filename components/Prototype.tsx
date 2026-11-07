@@ -714,13 +714,87 @@ async function postSubmission(body: Record<string, unknown>) {
   if (!response.ok || !result.ok) throw new Error(result.error ?? "Something went wrong. Please try again.");
 }
 
+declare module "react" {
+  namespace JSX {
+    interface IntrinsicElements {
+      "churchos-smart-form": React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLElement> & {
+          "form-key"?: string;
+          mode?: string;
+          theme?: string;
+          "accent-color"?: string;
+          "button-text"?: string;
+          "button-shape"?: string;
+          "button-size"?: string;
+          "button-width"?: string;
+          "button-position"?: string;
+          "button-style"?: string;
+          "height-mode"?: string;
+          "min-height"?: string;
+        },
+        HTMLElement
+      >;
+    }
+  }
+}
+
+function ChurchQContactForm() {
+  const formRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const el = formRef.current;
+    if (!el) return;
+
+    const ensureMounted = () => {
+      const sdk = (window as unknown as { ChurchOSSmartForms?: { mount: (node: HTMLElement) => void } }).ChurchOSSmartForms;
+      if (sdk && !el.querySelector("iframe")) {
+        el.dataset.churchosMounted = "true";
+        sdk.mount(el);
+      }
+    };
+
+    const existing = document.querySelector<HTMLScriptElement>('script[src="https://churchq.io/sdk/churchos-smartforms.js"]');
+    if (existing) {
+      ensureMounted();
+      existing.addEventListener("load", ensureMounted);
+      return () => existing.removeEventListener("load", ensureMounted);
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://churchq.io/sdk/churchos-smartforms.js";
+    script.async = true;
+    script.addEventListener("load", ensureMounted);
+    document.body.appendChild(script);
+    return () => script.removeEventListener("load", ensureMounted);
+  }, []);
+
+  return (
+    <div className="smart-form-embed">
+      <script async src="https://churchq.io/sdk/churchos-smartforms.js" />
+      <churchos-smart-form
+        ref={formRef}
+        suppressHydrationWarning
+        form-key="contact-us-website-034473"
+        mode="inline"
+        theme="churchos"
+        accent-color="#10b981"
+        button-text="Open form"
+        button-shape="pill"
+        button-size="medium"
+        button-width="auto"
+        button-position="bottom-right"
+        button-style="filled"
+        height-mode="auto"
+        min-height="640px"
+      />
+    </div>
+  );
+}
+
 function FaqPage() {
   const [tab, setTab] = useState<FaqTab>("General");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(0);
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
   const term = query.trim().toLowerCase();
   const visible = term
     ? faqItems.filter((item, index, list) => `${item.q} ${item.a}`.toLowerCase().includes(term) && list.findIndex((other) => other.q === item.q) === index)
@@ -731,34 +805,6 @@ function FaqPage() {
     setQuery("");
     setOpen(0);
     document.getElementById("faq-answers")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  const sendInquiry = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError(null);
-    const data = new FormData(event.currentTarget);
-    if (data.get("website")) {
-      setSent(true);
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await postSubmission({
-        kind: "inquiry",
-        name: data.get("name"),
-        email: data.get("email"),
-        phone: "",
-        topic: data.get("topic"),
-        message: data.get("message"),
-        region: data.get("atlantaEmails") === "on" ? "Zoe Atlanta emails" : "",
-        consent: true,
-      });
-      setSent(true);
-    } catch (problem) {
-      setError(problem instanceof Error ? problem.message : "We couldn't reach the server. Check your connection and try again.");
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   return <>
@@ -832,25 +878,7 @@ function FaqPage() {
           <h2>Still Have a <span className="hl">Question?</span></h2>
           <p>That&apos;s okay. If you couldn&apos;t find what you were looking for, send us your question and we&apos;ll help get you to the right place.</p>
         </div>
-        {sent ? <div className="form-panel is-sent" role="status"><h3>Message sent</h3><p>Thank you. We&apos;ll help you get to the right place.</p></div> : (
-          <form className="form-panel" onSubmit={sendInquiry}>
-            <input className="form-honeypot" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" />
-            <div className="form-row">
-              <label>Full name<input name="name" required placeholder="Enter full name" autoComplete="name" /></label>
-              <label>Email<input name="email" type="email" required placeholder="Enter email address" autoComplete="email" /></label>
-            </div>
-            <label>What can we help you with?
-              <select name="topic" required defaultValue="">
-                <option value="" disabled>Select below</option>
-                {faqTabs.map((name) => <option key={name}>{name}</option>)}
-              </select>
-            </label>
-            <label>Your message<textarea name="message" required placeholder="Your message" rows={4} /></label>
-            <label className="check"><input name="atlantaEmails" type="checkbox" /> Also include me in Zoe Atlanta emails.</label>
-            {error ? <p className="form-error" role="alert">{error}</p> : null}
-            <button className="btn btn-primary btn-block" type="submit" disabled={submitting}>{submitting ? "Sending…" : "Send Message"}</button>
-          </form>
-        )}
+        <ChurchQContactForm />
       </div>
     </section>
   </>;
