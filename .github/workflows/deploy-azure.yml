@@ -68,6 +68,7 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm typecheck
+          rm -rf node_modules
 
       - name: Build and Deploy to Azure Static Web Apps
         id: deploy
