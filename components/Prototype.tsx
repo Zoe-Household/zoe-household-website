@@ -739,9 +739,15 @@ declare module "react" {
 }
 
 function ChurchQContactForm() {
+  const [mounted, setMounted] = useState(false);
   const formRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     const el = formRef.current;
     if (!el) return;
 
@@ -766,27 +772,27 @@ function ChurchQContactForm() {
     script.addEventListener("load", ensureMounted);
     document.body.appendChild(script);
     return () => script.removeEventListener("load", ensureMounted);
-  }, []);
+  }, [mounted]);
 
   return (
     <div className="smart-form-embed">
-      <script async src="https://churchq.io/sdk/churchos-smartforms.js" />
-      <churchos-smart-form
-        ref={formRef}
-        suppressHydrationWarning
-        form-key="contact-us-website-034473"
-        mode="inline"
-        theme="churchos"
-        accent-color="#10b981"
-        button-text="Open form"
-        button-shape="pill"
-        button-size="medium"
-        button-width="auto"
-        button-position="bottom-right"
-        button-style="filled"
-        height-mode="auto"
-        min-height="640px"
-      />
+      {mounted ? (
+        <churchos-smart-form
+          ref={formRef}
+          form-key="contact-us-website-034473"
+          mode="inline"
+          theme="churchos"
+          accent-color="#10b981"
+          button-text="Open form"
+          button-shape="pill"
+          button-size="medium"
+          button-width="auto"
+          button-position="bottom-right"
+          button-style="filled"
+          height-mode="auto"
+          min-height="640px"
+        />
+      ) : null}
     </div>
   );
 }
